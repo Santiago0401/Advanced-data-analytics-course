@@ -6,15 +6,90 @@ Correlation measures the strength and direction of association between two varia
 
 ## Spearman's Rank Correlation
 
-Spearman's correlation coefficient $\rho$ is based on \emph{ranked} data. For two variables $X$ and $Y$, we replace each observation by its rank. Spearman's $\rho$ is then computed similarly to Pearson's correlation but on these ranks:
+Spearman's correlation coefficient $\rho$ is based on \emph{ranked} data. For two variables $X$ and $Y$, we replace each observation by its rank.
+
+$\rho = 1 - \frac{6 \sum d^2}{n(n^2 - 1)}$
+
+to compute Spearman's correlation coefficient $\rho$. This measure is based on ranked data. For two variables $X$ and $Y$, we first replace each observation by its rank. Once the data are ranked, Spearman's $\rho$ is computed similarly to Pearson's correlation, but using the ranks instead of the raw values:
+
+$\rho = \frac{\sum_{i=1}^{n}(r_{X_i} - \bar{r}_{X})(r_{Y_i} - \bar{r}_{Y})}{\sqrt{\sum_{i=1}^{n}(r_{X_i} - \bar{r}_{X})^2}\sqrt{\sum_{i=1}^{n}(r_{Y_i} - \bar{r}_{Y})^2}}$
+
+where $r_{X_i}$ is the rank of the $i$-th observation of $X$, $r_{Y_i}$ is the rank of the $i$-th observation of $Y$, and $\bar{r}_{X}$ and $\bar{r}_{Y}$ are the mean ranks of $X$ and $Y$, respectively.
+
+Spearman's $\rho$ is then computed similarly to Pearson's correlation but on these ranks:
 
 $\rho = \frac{\sum_{i=1}^{n}(r_{X_i} - \bar{r}_{X})(r_{Y_i} - \bar{r}_{Y})}{\sqrt{\sum_{i=1}^{n}(r_{X_i} - \bar{r}_{X})^2}\sqrt{\sum_{i=1}^{n}(r_{Y_i} - \bar{r}_{Y})^2}}$
 
 where $r_{X_i}$ is the rank of the $i$-th observation of $X$, and $r_{Y_i}$ is the rank of the $i$-th observation of $Y$.
 
+- A value of $\rho$ close to 1 indicates a strong positive monotonic relationship (as one variable increases, so does the other), while a value close to -1 indicates a strong negative monotonic relationship. A value around 0 suggests little or no monotonic association.
+
+- This method is robust to non-normality and outliers since it relies on the order (ranks) rather than the actual values.
+
 ```{r}
 #| include: false
 source('setup.R')
+```
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Load required libraries
+library(ggplot2)
+
+# 1. Create a small dataset
+x <- c(23, 42, 35, 44, 29)
+y <- c(52, 31, 14, 23, 45)
+data <- data.frame(x = x, y = y)
+
+# 2. Compute the ranks for each variable
+data$rank_x <- rank(data$x)  # For x: 1,2,3,4,5 (already sorted)
+cat('r_X = ', data$rank_x)
+data$rank_y <- rank(data$y)  # For y: gives ranks corresponding to [2,1,4,3,5]
+cat('r_X = ', data$rank_y)
+
+# 3. Compute differences between ranks and their squares
+data$d <- data$rank_x - data$rank_y
+data$d2 <- data$d^2
+
+# Sum of squared differences
+sum_d2 <- sum(data$d2)
+
+# Number of observations
+n <- nrow(data)
+
+# 4. Calculate Spearman's correlation using the formula:
+spearman_rho <- 1 - (6 * sum_d2) / (n * (n^2 - 1))
+
+# Print computed Spearman correlation
+print(paste("Spearman correlation (rho):", round(spearman_rho, 2)))
+# Expected output: 0.8
+
+# 5. Visualize the data using ggplot2
+
+# Plot 1: Original Data Scatter Plot with a Linear Fit
+p1 <- ggplot(data, aes(x = x, y = y)) +
+  geom_point(color = "blue", size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "darkblue") +
+  ggtitle("Scatter Plot of Original Data") +
+  xlab("x") + ylab("y") +
+  theme_minimal()
+
+# Plot 2: Scatter Plot of Ranks
+p2 <- ggplot(data, aes(x = rank_x, y = rank_y)) +
+  geom_point(color = "red", size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "darkred") +
+  ggtitle("Scatter Plot of Ranks") +
+  xlab("Rank of x") + ylab("Rank of y") +
+  theme_minimal()
+
+# Display the plots side by side
+grid.arrange(p1, p2, ncol = 2)
+
+# Optionally, print the data frame to show ranks and differences
+print(data)
 ```
 
 ```{r}
@@ -34,27 +109,7 @@ delitos_data %>%
   corrplot(., method = "color", title = "Spearman Correlation", mar=c(0,0,1,0))
 ```
 
-## Kendall's Tau
-
-Kendall's tau $\tau$ measures how often the order of pairs is preserved between two variables. For $n$ observations, if we have a pair of observations $(X_i, Y_i)$ and $(X_j, Y_j)$, Kendall's $\tau$ counts \emph{concordant} and \emph{discordant} pairs. A pair is \emph{concordant} if $(X_i - X_j)$ and $(Y_i - Y_j)$ have the same sign; otherwise, it is \emph{discordant}. The formula is:
-
-$\tau = \frac{\text{(number of concordant pairs)} - \text{(number of discordant pairs)}}{\frac{n(n-1)}{2}}$
-
-```{r}
-#| echo: true
-#| message: false
-#| warning: false
-
-delitos_data %>%
-  st_drop_geometry() %>%
-  select(contains('24')) %>%
-  cor(., method = "kendall", use = "complete.obs") %>%
-  round(., 3) %>% 
-  print(.) %>%
-  corrplot(., method = "color", title = "Kendall Correlation", mar=c(0,0,1,0))
-```
-
-Both Spearman's $\rho$ and Kendall's $\tau$ capture the \emph{monotonic} relationship between two variables. They are more robust to outliers and non-linear relationships than Pearson's correlation. In the context of areal data (e.g., crime rates, population density across polygons), these measures can reveal how variables co-vary without assuming linearity or normality.
+Both Spearman's $\rho$ captures the \emph{monotonic} relationship between two variables. They are more robust to outliers and non-linear relationships than Pearson's correlation. In the context of areal data (e.g., crime rates, population density across polygons), these measures can reveal how variables co-vary without assuming linearity or normality.
 
 # Spatial Neighborhood Matrices {.unnumbered}
 
@@ -73,8 +128,10 @@ This section is based on *Spatial statistics for data science theory and practic
 nb <- spdep::poly2nb(delitos_data, queen = TRUE)
 head(nb)
 
+nb_0 <- lapply(nb, function(x) if(length(x)==1 && x==0) integer(0) else x)
+
 # Polygons with neighbors
-table(sapply(nb, length))
+table(sapply(nb_0, length))
 
 # Neighbors of Order k Based on Contiguity
 # Neighbors of second order
@@ -186,9 +243,10 @@ nbw$weights[1:10]
 # Correspondance Analysis {.unnumbered}
 
 ```{r}
-#| echo: true
+#| eval: false
 #| message: false
 #| warning: false
+#| include: false
 
 # Paso 1: Crear la matriz de frecuencias de delitos en polígonos
 Freq <- delitos_data %>%
