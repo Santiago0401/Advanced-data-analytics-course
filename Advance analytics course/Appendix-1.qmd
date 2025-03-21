@@ -168,3 +168,137 @@ In 85.44% of Antioquia, no personal thefts were recorded, indicating that thefts
 1.  Prompt: What is the meaning of the values from sum_24HP that represents the sum of robberies to people in 2024 (where "24" stands for the year).
 2.  Prompt: What is the meaning of having percentages of values within 1SD of "within_1sd: 48877 - percentage_1sd: 98.52"? Explain in a concise paragraph both numbers.
 3.  Prompt: What is the interpretation of this results? Explain it.
+
+# Appendix 1 {.appendix, .unnumbered}
+
+## Augmented Data Analyst {.unnumbered}
+
+## Prompts {.unnumbered}
+
+----------------------------------------------------------------------------------------
+
+**Course:** Advance Analytics of Data.
+
+**Student:** Andrés Cervantes Torres.
+
+**Professor**: Andrés Pérez-Coronado.
+
+Note: for my analysis I've chosen region \[88\] =\> (**archipiélago de san andrés providencia y santa catalina**).
+
+-\> delitos_data \<- delitos_data\[delitos_data\$dpto_ccdgo == c ('88'), \]
+
+Is this line the 88 code represent San Andres y Providencia from DANE data base standared codes.
+
+-\> dim(delitos_data)
+
+It is saying the dimension about specific data for the region select previously. In this case 883 rows and 91 colums.
+
+-\> summary(delitos_data)
+
+This line permits to know measurements about different kind of crymes against population specifically in region 88. For instance, we can see one of them called "24HP", whos meaning is theft from persons. This summary shows measures of central tendency: Min: 0, 1st Qu.:0, Median: 0, Mean: 0, 3rd Qu.: 0, Max: 0.
+
+-\> quantile(delitos_data\$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE)
+
+Prompt: Chat, What does the R "quantile" function tell me, applying the following parameters: \# quantile quantile(delitos_data\$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE)?
+
+OpenAI GPT-4o
+
+The quantile() function in R is used to calculate the quartiles, quintiles, deciles, or any other percentile of a dataset. In your case, by applying quantile(delitos_data\$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE), you are asking to find the deciles of the sum_24HP column of the crímenes_data dataframe.
+
+Here we have results for region 88 (San Andrés y Providencia):
+
+0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+
+0 0 0 0 0 0 0 0 0 1 12
+
+This quantile result says we have concentrated major amount of crimes concentrated in some specific municipalities. 92.30% of crimes have been located in 20% of territory.
+
+-\> write.csv(delitos_data, file = "delitos_data.csv", row.names = FALSE)
+
+I've applied this line to export "delitos_data" dataset to Excel.
+
+-\> boxplot(delitos_data\$sum_24HP, main = "Boxplot of PERSONAS", horizontal = TRUE)
+
+This boxplot represents the distribution of values ​​in sum_24HP, showing the median, quartiles, and any outliers in the distribution.
+
+![](images/clipboard-3840180970.png)
+
+## -\> **Skewness**
+
+Applying skewness to 24HP with value equal to 7.002492, we can say it is extremely high and suggests a strong positive skewness in the distribution of your data.
+
+Prompt: Chat, aún sabiendo que, mean_x = 0.2536806, ¿consideras que un skewness de 7.002492 es muy alto?
+
+A skewness value greater than 1 (or even 2) usually indicates that the distribution is skewed to the right. In your case, a skewness of 7.002492 indicates that most of your values ​​are low (as suggested by a mean of 0.2536806), but there are some very high values ​​(outliers) that are affecting the mean and causing the distribution to be unbalanced.
+
+![](images/clipboard-1566564623.png)
+
+## -\> **Kurtosis**
+
+In this case applying \[kurtosis(delitos_data\$sum_24HP, na.rm = TRUE)\] we get 65.45428 as result.
+
+Taking this result into account and we knowing that:
+
+A kurtosis of $( 0 )$ (excess kurtosis) indicates tail behavior similar to a normal distribution. Positive kurtosis $( g_2 > 0 )$ signifies heavier tails and more outliers (leptokurtic), while negative kurtosis $( g_2 < 0 )$ indicates lighter tails and fewer outliers (platykurtic).
+
+![](images/clipboard-3989889599.png){width="311"}
+
+We can define this Kurtosis as Leptokurtic for 24HP variable since it means we have more outliers.
+
+## -\> **Coefficient of Variation**
+
+The Coefficient of Variation (CV) is a statistical measure that indicates the relative dispersion of data in relation to the mean. It is expressed as a percentage and is used to compare variability between different datasets or measurements.
+
+Performing the calculations in R, I obtained the mean and standard deviation (0.253680634 and 0.969591831), respectively. For this exercise, the instructor suggested using a CV calculated as a percentage. If I apply the formula: round(std_dev / mean_val \* 100) The result is 3822%. I wasn't sure how R performed these calculations, so I transferred the data frame to Microsoft Excel to analyze some aspects.
+
+![](images/clipboard-1333209121.png)
+
+Now I know that R takes all the values, applies an AVERAGE (arithmetic average), and returns the result. I also know that the standard deviation R calculates uses the formula that applies to a sample (x̅), not to the population (μ).
+
+Chat, I'm doing some Advanced Statistical Analysis with R. If the data set I'm analyzing gives me the following result: mean: 0.2536806 standard deviation: 0.9695918 And if with this, the Coefficient of Variation gives me: 3822%. What can I determine from that result? What conclusion can I draw?
+
+OpenAI GPT-4o - start of comment
+
+The **Coefficient of Variation (CV)** is a measure of the relative dispersion of data relative to its mean and is expressed as a percentage. In your case, you have the following results:
+
+-   **Mean**: 0.2536806
+-   **Standard Deviation**: 0.9695918
+-   **Coefficient of Variation (CV)**: 3822%
+
+### Interpretation of the Coefficient of Variation
+
+1.  **Highly Dispersed**:
+
+-   A CV of **3822%** suggests that there is a large variability in your data compared to the mean. This means that, on average, the standard deviation is more than 38 times greater than the mean.
+
+2.  **Mean**:
+
+-   Most of your data can vary significantly and could include numerous extreme values ​​or outliers.
+-   Since the mean is relatively low, it suggests that the data is very inconsistent or that there are many zeros in the data set.
+
+### Conclusions
+
+1.  **Data Instability**:
+
+-   High variability indicates that the data is not stable, and it may be difficult to make accurate predictions based on the mean.
+
+2.  **Attitude Toward Analysis**:
+
+-   You might consider exploring the data further, looking for outliers, distributions, and other descriptive statistics that can help you understand the behavior of your data.
+
+3.  **Further Analysis**:
+
+-   You could use visualizations (such as histograms or boxplots) to better understand the distribution and variability of the data.
+
+Such a high CV is often an indication that further analysis is needed to provide meaningful insights. If you need more information on how to proceed or perform other types of analysis, let me know!
+
+OpenAI GPT-4o - end of comment
+
+Well, as mentioned in the ChatGPT analysis, within the 24HP (Personal Theft) dataset, we definitely have a large number of zeros. This is because we begin to find cases starting at 90% of the data.
+
+![](images/clipboard-3508930267.png)
+
+Now, if we compare the CVs of the different crimes, we can say that there is considerable variability in the occurrence of SUM_24HP (3.82) compared to its mean (0.2536806). We also note that there are other crimes with much higher CVs. Therefore, a CV of 3.82 for SUM_24HP suggests that this illegal act is less predictable and could be affected by external factors or changing conditions in the region.
+
+## -\> Median Absolute Deviation MAD and MAD/median
+
