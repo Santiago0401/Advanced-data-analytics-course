@@ -22,9 +22,9 @@ $\rho = \frac{\sum_{i=1}^{n}(r_{X_i} - \bar{r}_{X})(r_{Y_i} - \bar{r}_{Y})}{\sqr
 
 where $r_{X_i}$ is the rank of the $i$-th observation of $X$, and $r_{Y_i}$ is the rank of the $i$-th observation of $Y$.
 
-- A value of $\rho$ close to 1 indicates a strong positive monotonic relationship (as one variable increases, so does the other), while a value close to -1 indicates a strong negative monotonic relationship. A value around 0 suggests little or no monotonic association.
+-   A value of $\rho$ close to 1 indicates a strong positive monotonic relationship (as one variable increases, so does the other), while a value close to -1 indicates a strong negative monotonic relationship. A value around 0 suggests little or no monotonic association.
 
-- This method is robust to non-normality and outliers since it relies on the order (ranks) rather than the actual values.
+-   This method is robust to non-normality and outliers since it relies on the order (ranks) rather than the actual values.
 
 ```{r}
 #| include: false
@@ -117,17 +117,23 @@ This section is based on *Spatial statistics for data science theory and practic
 
 ## Neighbors Based on Contiguity
 
--   Queen Contiguity: Two polygons are considered neighbors if they share any common point (i.e., an edge or a vertex). Mathematically, if polygons ( p_i ) and ( p_j ) touch at any point, then ( A\_{ij} = 1 ).
--   Rook Contiguity: Two polygons are neighbors only if they share a common edge. That is, if polygons ( p_i ) and ( p_j ) share a boundary segment, then ( A\_{ij} = 1 ); merely touching at a corner does not count.
+-   Queen Contiguity: Two polygons are considered neighbors if they share any common point (i.e., an edge or a vertex). Mathematically, if polygons $p_i$ and $p_j$ touch at any point, then $A\_{ij} = 1$.
+-   Rook Contiguity: Two polygons are neighbors only if they share a common edge. That is, if polygons $p_i$ and $p_j$ share a boundary segment, then $A\_{ij} = 1$; merely touching at a corner does not count.
+
+[![Neighbors based on contiguity. Area of interest is represented in black and its neighbors in gray.](images/arealdata-orderk-1.png){fig-align="center"}](Neighbors%20based%20on%20contiguity.%20Area%20of%20interest%20is%20represented%20in%20black%20and%20its%20neighbors%20in%20gray.)
 
 ```{r}
 #| echo: true
 #| message: false
 #| warning: false
 
+# Create a spatial neighbors list using Queen contiguity
+# (i.e., polygons are considered neighbors if they share any point: edge or vertex)
 nb <- spdep::poly2nb(delitos_data, queen = TRUE)
 head(nb)
 
+# Replace invalid neighbor entries (i.e., [1] 0) with empty integer vectors
+# This ensures compatibility with functions that expect valid neighbor lists only
 nb_0 <- lapply(nb, function(x) if(length(x)==1 && x==0) integer(0) else x)
 
 # Polygons with neighbors
@@ -136,8 +142,11 @@ table(sapply(nb_0, length))
 # Neighbors of Order k Based on Contiguity
 # Neighbors of second order
 nblags <- spdep::nblag(neighbours = nb, maxlag = 2)
+
+# Combine neighbors of all orders up to the specified lag (in this case, up to order 2)
+# This creates a cumulative neighbor list including first- and second-order neighbors
 nblagsc <- spdep::nblag_cumul(nblags)
-summary(nblagsc)
+table(sapply(nblagsc, length))
 ```
 
 ## Neighbors Based on k Nearest Neighbors
@@ -145,13 +154,26 @@ summary(nblagsc)
 -   K-Nearest Neighbors: For each polygon, the ( k ) nearest neighbors are identified based on a distance threshold.
 -   Distance Threshold: The distance threshold can be defined as a fixed value or as a function of the average distance between polygons.
 
+\textbf{k-Nearest Neighbors (kNN)} is a method that defines neighbors based on distance rather than contiguity. For each spatial unit $p_i$, the $k$ closest units (according to Euclidean distance or other metric) are selected as neighbors.
+
+Formally, let $D(p_i, p_j)$ be the distance between polygons $p_i$ and $p_j$. Then, the neighbor set $N_k(p_i)$ is defined as:
+
+$N_k(p_i) = p_j$ : $p_j$ is among the $k$ nearest polygons to $p_i$.
+
+This ensures that each polygon has exactly $k$ neighbors, which is useful when spatial units are irregular or disconnected.
+
+[![We define spatial k-nearest neighbour problem as finding k observations from a set of candidates C that are the most similar to the given a landmark L\[i\], where the similarity is defined by a distance function d(L\[i\], S\[j\]) = st_distance(L\[i\], S\[j\])](images/nearest_neighbour.png){fig-align="center"}](https://databrickslabs.github.io/mosaic/models/spatial-knn.html)
+
 ```{r}
 #| echo: true
 #| message: false
 #| warning: false
 
-# Neighbors based on 3 nearest neighbors
+# Compute centroids of the polygons
 coo <- st_centroid(delitos_data)
+
+# Create a neighbor list where each polygon (based on its centroid `coo`) is connected 
+# to its 3 nearest neighbors using k-nearest neighbors (k = 3)
 nb <- knn2nb(knearneigh(coo, k = 3)) # k number nearest neighbors
 
 # Polygons with neighbors
@@ -166,7 +188,7 @@ nb_10 <- knn2nb(knearneigh(st_centroid(delitos_data_10), k = 3))
 # Compute centroids for the 10 polygons
 coords_10 <- st_coordinates(st_centroid(delitos_data_10))
 
-# 4. Plot the first 10 polygons and overlay neighbor connections in red
+# Plot the first 10 polygons and overlay neighbor connections in red
 plot(st_geometry(delitos_data_10), border = "lightgray", main = "First Polygons with 3 Nearest Neighbors")
 plot.nb(nb_10, coords_10, add = TRUE, col = "red", lwd = 2)
 ```
@@ -178,6 +200,8 @@ plot.nb(nb_10, coords_10, add = TRUE, col = "red", lwd = 2)
 #| message: false
 #| warning: false
 
+# Create a neighbor list using distance-based contiguity:
+# Polygons are considered neighbors if their centroids are within 0.4 units (e.g., degrees) apart
 nb <- dnearneigh(x = st_centroid(delitos_data), d1 = 0, d2 = 0.4)
 
 # Polygons with neighbors
@@ -192,7 +216,7 @@ nb_10 <- dnearneigh(x = st_centroid(delitos_data_10), d1 = 0, d2 = 0.4)
 # Compute centroids for the 10 polygons
 coords_10 <- st_coordinates(st_centroid(delitos_data_10))
 
-# 4. Plot the first 10 polygons and overlay neighbor connections in red
+# Plot the first 10 polygons and overlay neighbor connections in red
 plot(st_geometry(delitos_data_10), border = "lightgray", main = "First Polygons with 3 Nearest Neighbors")
 plot.nb(nb_10, coords_10, add = TRUE, col = "red", lwd = 2)
 ```
@@ -204,13 +228,16 @@ Determining an Appropriate Upper Distance Bound: To ensure that each area in a s
 #| message: false
 #| warning: false
 
-# k is the number nearest neighbors
+# Compute k-nearest neighbors: for each polygon centroid, find its 1 nearest neighbor (k = 1)
 nb1 <- knn2nb(knearneigh(coo, k = 1))
 
+# Calculate the Euclidean distances between each polygon and its nearest neighbor
 dist1 <- nbdists(nb1, coo)
 
+# Summarize all distances to understand the minimum, maximum, and quartiles
 summary(unlist(dist1))
 
+# Create a distance-based neighbor list: polygons whose centroids are within [0, 1.2] units are considered neighbors
 nb <- dnearneigh(x = st_centroid(delitos_data), d1 = 0, d2 = 1.2)
 
 # Polygons with neighbors
@@ -224,17 +251,35 @@ hist(sapply(nb, length))
 #| message: false
 #| warning: false
 
-# Spatial weights matrix based on a binary neighbor list
+# Spatial weights matrix using Queen contiguity (binary weights)
+# 'queen = TRUE' considers shared edges OR vertices as neighbors
 nb <- poly2nb(delitos_data, queen = TRUE)
+
+# Convert the neighbor list to a spatial weights list object
+# 'style = "W"' row-standardizes the weights (sums to 1)
+# 'zero.policy = TRUE' avoids errors when some polygons have no neighbors
 nbw <- spdep::nb2listw(nb, style = "W", zero.policy = TRUE)
+
+# Display the first 10 rows of spatial weights (for the first 10 polygons)
 nbw$weights[1:10]
 
 # Spatial weights matrix based on inverse distance values
+# Compute centroids of polygons
 coo <- st_centroid(delitos_data)
+
+# Use Queen contiguity again to define neighbors
 nb <- poly2nb(delitos_data, queen = TRUE)
+
+# Compute distances between neighbors based on their centroids
 dists <- nbdists(nb, coo)
+
+# Create inverse distance weights (1/distance) for each pair of neighbors
 ids <- lapply(dists, function(x){1/x})
+
+# Create a listw object using binary style ("B" = no standardization)
 nbw <- nb2listw(nb, glist = ids, style = "B", zero.policy = TRUE)
+
+# Display the first 10 inverse-distance-based weights
 nbw$weights[1:10]
 ```
 

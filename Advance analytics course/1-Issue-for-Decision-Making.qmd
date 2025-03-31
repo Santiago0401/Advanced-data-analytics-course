@@ -56,6 +56,9 @@ leaflet(delitos_data[order(delitos_data$sum_24HP, decreasing = TRUE)[1:10], ]) %
   ) %>%
   addLegend(pal = palette_decil, values = delitos_data$decil, 
             title = "Decile Classification", position = "bottomright")
+
+# Drop delitos_data$sum_24HP_jittered 
+delitos_data$sum_24HP_jittered <- NULL
 ```
 
 ## Skewness
@@ -489,27 +492,13 @@ Mathematically, redundancy is detected using the covariance matrix $\Sigma$, who
 
 $\Sigma v_{\min} = \lambda_{\min} v_{\min}$
 
-The eigenvector $v_{\\min}$ identifies the redundant variable combination.
+The eigenvector $v_{\min}$ identifies the redundant variable combination.
 
-To confirm, we fit a regression model where one variable $y$ is explained by others:
-
-$y = \beta_1 x_1 + \beta_2 x_2 + \dots + \beta_p x_p + \epsilon$
-
-To quantify redundancy, we compute Variance Inflation Factors (VIFs) for each predictor $x_j$:
-
-$VIF_j = \frac{1}{1 - R_j^2}$
-
-where $R_j^2$ is the $R^2$ value from regressing $x_j$ on all other predictors.
-
--   $VIF_j = 1$ → No multicollinearity.\
--   $VIF_j > 5$ → Moderate multicollinearity.\
--   $VIF_j > 10$ → Severe multicollinearity, indicating redundancy.
-
-A high VIF suggests that $x_j$ contributes little independent information and may be removed to improve model stability.
+### Example: Eigen Decomposition
 
 Eigenvalues and eigenvectors are fundamental tools in linear algebra, representing the directions and scaling factors of a matrix transformation.
 
-1.  Eigenvalues: Solving the Characteristic Equation
+Eigenvalues: Solving the Characteristic Equation
 
 The eigenvalues $( \lambda )$ of a matrix $( A )$ satisfy:
 
@@ -562,6 +551,8 @@ print("Are A * eigenvectors and eigenvectors * eigenvalues equal?")
 print(are_equal)
 ```
 
+### Redundant Variables Detection
+
 ```{r}
 #| echo: true
 #| message: false
@@ -571,7 +562,9 @@ print(are_equal)
 cm_delitos_data <- delitos_data %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
-  select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
+  select(-sum_24TR) %>%
+  select(-sum_24SE) %>%
+  select(-sum_24SS) %>%
   cov()
 
 # Compute eigenvalues and eigenvectors
@@ -617,40 +610,73 @@ top_variable_names <- variable_names[top_indices]
 
 # Print the top variable names
 print(top_variable_names)
-
-# Fit a regression model to confirm the relationship
-model <- lm(sum_24TR ~ sum_24HOM + sum_24LP + sum_24VI + 
-              sum_24DS + sum_24HP + sum_24HR + 
-              sum_24HC + sum_24HA + sum_24HM + 
-              sum_24SS + sum_24SE + sum_24EX, 
-            data = data.frame(delitos_data))
-
-# model <- lm(sum_24SE ~ sum_24DS + sum_24EX + sum_24SS + sum_24LP + 
-#               sum_24HOM + sum_24HR + sum_24VI + sum_24HM + 
-#               sum_24HA + sum_24HP + sum_24HC, 
-#             data = data.frame(delitos_data))
-# 
-# model <- lm(sum_24SS ~ sum_24EX + sum_24HC + sum_24HR + 
-#                   sum_24HA + sum_24DS + sum_24HM + 
-#                   sum_24HOM + sum_24HP + sum_24VI + sum_24LP,
-#                 data = data.frame(delitos_data))
-# 
-# model <- lm(sum_24HOM ~ sum_24HA + sum_24EX + sum_24HM +
-#               sum_24LP + sum_24HR + sum_24VI +
-#               sum_24HC + sum_24HP + sum_24DS,
-#             data = data.frame(delitos_data))
-
-summary(model)
-
-# Variance Inflation Factors
-vif(model)
 ```
+
+### Regression Analysis
 
 The regression model returns all coefficients, standard errors, and test statistics as zero or NaN (Not a Number). This indicates that the dependent variable $( \text{sum\_24TR} )$ is likely a linear combination of the independent variables or identical to their sum. Mathematically, if:
 
-$\text{sum\_24TR} = \sum_{i=1}^{12} \beta_i \cdot X_i$
+$\text{sum\_24TR} = \sum_{i=1}^{n} \beta_i \cdot X_i$
 
 where $( X_i )$ represents the independent variables, then the design matrix $( X )$ is rank deficient (i.e., singular), making it impossible to estimate unique regression coefficients. This leads to zero residuals and undefined test statistics. A possible cause is perfect multicollinearity, meaning the predictor variables are linearly dependent. In such cases, the system has no unique solution, and the regression fails to provide meaningful estimates.
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Fit a regression model to confirm the relationship
+
+# model <- lm(sum_24TR ~ sum_24HOM + sum_24LP + sum_24VI +
+#               sum_24DS + sum_24HP + sum_24HR +
+#               sum_24HC + sum_24HA + sum_24HM +
+#               sum_24SS + sum_24SE + sum_24EX,
+#             data = data.frame(delitos_data))
+
+# model <- lm(sum_24SE ~ sum_24DS + sum_24EX + sum_24SS + sum_24LP +
+#               sum_24HOM + sum_24HR + sum_24VI + sum_24HM +
+#               sum_24HA + sum_24HP + sum_24HC,
+#             data = data.frame(delitos_data))
+
+# model <- lm(sum_24SS ~ sum_24EX + sum_24HC + sum_24HR +
+#                   sum_24HA + sum_24DS + sum_24HM +
+#                   sum_24HOM + sum_24HP + sum_24VI + sum_24LP,
+#                 data = data.frame(delitos_data))
+
+model <- lm(sum_24HOM ~ sum_24HA + sum_24EX + sum_24HM +
+              sum_24LP + sum_24HR + sum_24VI +
+              sum_24HC + sum_24HP + sum_24DS,
+            data = data.frame(delitos_data))
+
+summary(model)
+```
+
+### Variance Inflation Factors (VIF)
+
+To confirm, we fit a regression model where one variable $y$ is explained by others:
+
+$y = \beta_1 x_1 + \beta_2 x_2 + \dots + \beta_p x_p + \epsilon$
+
+To quantify redundancy, we compute Variance Inflation Factors (VIFs) for each predictor $x_j$:
+
+$VIF_j = \frac{1}{1 - R_j^2}$
+
+where $R_j^2$ is the $R^2$ value from regressing $x_j$ on all other predictors.
+
+-   $VIF_j = 1$ → No multicollinearity.\
+-   $VIF_j > 5$ → Moderate multicollinearity.\
+-   $VIF_j > 10$ → Severe multicollinearity, indicating redundancy.
+
+A high VIF suggests that $x_j$ contributes little independent information and may be removed to improve model stability.
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| 
+# Variance Inflation Factors
+vif(model)
+```
 
 ## Global Variability Metric
 
@@ -725,7 +751,10 @@ print(S_inv, digits = 2)
 dependent_variable_index <- 5
 
 first_row <- S_inv[dependent_variable_index, ]
+print(first_row, digits = 2)
+
 diag_element <- S_inv[dependent_variable_index, dependent_variable_index]
+print(diag_element, digits = 2)
 
 # Compute regression coefficients
 beta_coefficients <- -first_row[-dependent_variable_index] / diag_element
