@@ -1,304 +1,599 @@
 # Appendix 1 {.appendix, .unnumbered}
 
-Nathaly Alejandra Páez Ramos
+### Nathaly P[aez
+### Andr[es Cervantes 
+### Laura Duque 
 
-Advance analytics course
+#### Maestría en Matemáticas Aplicadas y Ciencias de la Computación 
+#### Abril 2025
 
-## Augmented Data Analyst {.unnumbered}
+##Análisis del conjuto de datos
 
-```         
-> delitos_data <- delitos_data[delitos_data$dpto_ccdgo == c ('05'), ] > dim(delitos_data) [1] 49610    91
+For the assignment we selected three departments: Antioquia, Valle del Cauca and Atlántico; and ran the statistic analysis for each individually. From the data summary, for most crime variables, from the first to the third quantile values are 0, whereas the maximum value usually is a bigger number, which allows us to inquire that crime is focused in some polygons. 
+
+We decided to focus in the problemático fo robbery to people. From the boxplot and the quantiles analysis we can see that, as the other crime data, homicides in Atlántico are centralized in a few polygons, with a 10% of the polygons accounting all homicides in 2024.
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+# working directory
+#setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+
+# packages
+list_packages = c('readxl', 'dplyr', 'moments', 'tidyr', 'tibble', 'gt', 'ggplot2', 'fmsb', 'car', 'reshape2', 'knitr', 'gridExtra', 'ggExtra', 'sf', 'leaflet', 'igraph', 'ggraph', 'tidygraph', 'spdep')
+new.packages = list_packages[!(list_packages %in% installed.packages()[,"Package"])]
+if (length(new.packages)) {
+  install.packages(new.packages)
+}
+for (package in list_packages){
+  library(package, character.only = T)
+}
+
+# Load the dataset
+delitos_data <- st_read("data/spatial/crime_spatial_course.gpkg")
+delitos_data <- delitos_data[delitos_data$dpto_ccdgo == c('08',"05","76" ), ] # 08 Atlántico 76  Valle del Cauca y 05 Antioquia
+
+dim(delitos_data)
+summary(delitos_data)
+
+# interactive polygons location
+leaflet(delitos_data) %>%
+  addTiles() %>%  # Base map
+  addPolygons(color = "steelblue", weight = 1, fillOpacity = 0.5)
+
+# quantile
+quantile(delitos_data$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE)
+
+#boxplot
+boxplot(delitos_data$sum_24HP, main = "Boxplot of Homicides in Atlántico", horizontal = TRUE)
+
+
 ```
-
-In this line the 05 code represents the Antioquia department from the Dane data base codes. The line dim(delitos_data) give us a result about how big is our data base, the distribution in rows (49610) and columns (91).
-
-```         
-> summary(delitos_data)
-```
-
-This code show us the different kind of crimes, misdemeanors, offenses or infractions in a period of time. For example, for this exercises we choose 24HP that means "hurto a personas en 2024":
-
-![](images/clipboard-2144231668.png)
-
-Prompt: What is the meaning of the values from sum_24HP that represents the sum of robberies to people in 2024 (where "24" stands for the year).
-
-The values from **`sum_24HP`** represent the **sum of robberies to people in 2024**, where:
-
--   **Min (0.0000)** → Some areas or time periods had **zero reported robberies**.
-
--   **1st Quartile (0.0000)**→ At least **25% of the observations** had zero robberies.
-
--   **Median (0.0000)** → At least **50% (half) of the observations had zero robberies**.
-
--   **Mean (0.3982)** → The average number of robberies per unit of observation is **less than 0.4**, meaning that while most places/times had zero, some had a high number of incidents.
-
--   **3rd Quartile (0.0000)** → **75% of the data points had zero robberies**, emphasizing a high concentration of locations/times with no incidents.
-
--   **Max (699.0000)** → There was at least **one location/time period where up to 699 robberies occurred**.
-
-### Interpretation
-
--   **Highly skewed distribution**: Most areas/times had no robberies, but some had extremely high numbers.
-
--   **Presence of robbery hotspots**: A few locations or time frames had significantly more incidents.
-
--   **Possible data issues**: The extreme maximum suggests either a real **crime surge in some areas** or **possible data entry errors**.
-
-```         
-> # quantile > quantile(delitos_data$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE)   0%  10%  20%  30%  40%  50%  60%  70%  80%  90% 100%     0    0    0    0    0    0    0    0    0    1  699 
-```
-
-In quantiles, we can observe that up to 80% of the records have a value of 0, meaning that no robberies were recorded. At the 90th percentile, the value of 1 indicates that only 10% of the observations have a value greater than 1. The maximum value, at the 100th percentile, is 699, which can be interpreted as at least one area having a significantly higher concentration of robberies compared to the majority of the data.
-
-![](images/clipboard-3158233108.png)
-
-In the boxplot, we can observe that the distribution of the variables is asymmetric, confirming that the vast majority of the data has values close to zero. Additionally, the presence of scattered outliers on the right is clearly visible.
 
 ## Skewness
 
-```         
-> paste0('sum_24HP: ', skewness) [1] "sum_24HP: 108.920265681" >  > # function > skewness(delitos_data$sum_24HP, na.rm = TRUE) [1] 108.917
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# step by step
+n <- length(delitos_data$sum_24HP) 
+mean_x <- mean(delitos_data$sum_24HP)
+sd_x <- sd(delitos_data$sum_24HP)  # Uses (n-1) denominator
+z_scores <- (delitos_data$sum_24HP - mean_x) / sd_x
+z_cubed <- z_scores^3
+sum_cubed <- sum(z_cubed)
+skewness <- (n / ((n - 1) * (n - 2))) * sum_cubed
+paste0('sum_24HP: ', skewness)
+
+# function
+skewness(delitos_data$sum_24HP, na.rm = TRUE)
+
+# skewness
+delitos_data %>%
+  st_drop_geometry() %>%
+  select(dpto_ccdgo, contains('24')) %>%
+  group_by(dpto_ccdgo) %>%
+  summarise(across(everything(), ~ skewness(.x, na.rm = TRUE))) %>%
+  pivot_longer(
+    cols = -dpto_ccdgo,
+    names_to = "Crime Type",
+    values_to = "Skewness"
+  ) %>%
+  mutate(Skewness = round(Skewness, 2)) %>%
+  pivot_wider(
+    names_from = dpto_ccdgo,
+    values_from = Skewness
+  ) %>%
+  gt()
+
 ```
 
-A skewness of 0 or close to 0 indicates a symmetric distribution. If it is greater than 1, the skew is to the right, and if it is negative, the skew is to the left. Consequently, in our data, the skewness value of 108.92 represents extreme asymmetry, providing further evidence of the inequality in the distribution of our data.
+#### Analysis
+Robberies in Atlántico data have a skewness of 10.0324, this means that the distribution has a long tail to the right side. In other words, the distribution is very asymmetric around the mean. 
+
 
 ## Kurtosis
 
-![](images/clipboard-857239839.png)
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
 
-Image take from: <https://brandata.com.mx/2023/06/09/la-curtosis-que-es/>
+# step by step
+z_fourth <- z_scores^4
+sum_fourth <- sum(z_fourth)
+kurtosis <- ((n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) * sum_fourth - (3 * (n - 1)^2) / ((n - 2) * (n - 3))
+print(kurtosis)
 
-```         
-> # function > kurtosis(delitos_data$sum_24HP, na.rm = TRUE) [1] 17488.53
+# function
+kurtosis(delitos_data$sum_24HP, na.rm = TRUE)
+
+# kurtosis
+delitos_data %>%
+  st_drop_geometry() %>%
+  select(dpto_ccdgo, contains('24')) %>%
+  group_by(dpto_ccdgo) %>%
+  summarise(across(everything(), ~ kurtosis(.x, na.rm = TRUE))) %>%
+  pivot_longer(
+    cols = -dpto_ccdgo,
+    names_to = "Crime Type",
+    values_to = "Kurtosis"
+  ) %>%
+  mutate(Kurtosis = round(Kurtosis, 2)) %>%
+  pivot_wider(
+    names_from = dpto_ccdgo,
+    values_from = Kurtosis
+  ) %>%
+  gt()
+
 ```
 
-The kurtosis calculation yields a value of 17488.53, which is exceptionally high. This suggests a distribution with most values concentrated near the mean while also exhibiting a substantial number of extreme values (outliers). In other words, the distribution has heavy tails, making it highly leptokurtic.
+For Antlántico: 
+Data has a kurtosis of 206.24, this shows a leptokurtic distribution, with a heavy tail to the right.
 
 ## Coefficient of Variation
 
-```         
-> mean_val <- mean(delitos_data$sum_24HP, na.rm = TRUE)  > print(mean_val)  [1] 0.3981858 > std_dev <- sd(delitos_data$sum_24HP, na.rm = TRUE) > print(std_dev) [1] 4.084402 > lower_bound <- mean_val - std_dev > upper_bound <- mean_val + std_dev > paste0('lower_bound: ', round(lower_bound, 2), ' - upper_bound: ', round(upper_bound, 2)) [1] "lower_bound: -3.69 - upper_bound: 4.48" > percentage_1sd <- (within_1sd / nrow(delitos_data)) * 100 > paste0('within_1sd: ', round(within_1sd, 2), ' - percentage_1sd: ', round(percentage_1sd, 2)) [1] "within_1sd: 48877 - percentage_1sd: 98.52" > paste0('cv: ', round(std_dev / mean_val * 100), 2) [1] "cv: 10262"
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Compute statistics
+mean_val <- mean(delitos_data$sum_24HP, na.rm = TRUE)
+print(mean_val)
+std_dev <- sd(delitos_data$sum_24HP, na.rm = TRUE)
+print(std_dev)
+
+# Compute the range for first standard deviation
+lower_bound <- mean_val - std_dev
+upper_bound <- mean_val + std_dev
+paste0('lower_bound: ', round(lower_bound, 2), ' - upper_bound: ', round(upper_bound, 2))
+
+# Count the number of points within 1 standard deviation
+within_1sd <- sum(delitos_data$sum_24HP >= lower_bound & delitos_data$sum_24HP <= upper_bound, na.rm = TRUE)
+percentage_1sd <- (within_1sd / nrow(delitos_data)) * 100
+paste0('within_1sd: ', round(within_1sd, 2), ' - percentage_1sd: ', round(percentage_1sd, 2))
+
+# Create histogram
+ggplot(delitos_data, aes(x = sum_24HP)) +
+  geom_histogram(binwidth = 5, fill = "blue", alpha = 0.5, color = "black") +
+  
+  # Add vertical lines for mean, median, and 1st SD
+  geom_vline(aes(xintercept = mean_val), color = "red", linetype = "dashed", size = 1.2) +
+  #geom_vline(aes(xintercept = median_val), color = "green", linetype = "dashed", size = 1.2) +
+  geom_vline(aes(xintercept = lower_bound), color = "purple", linetype = "dashed", size = 1) +
+  geom_vline(aes(xintercept = upper_bound), color = "purple", linetype = "dashed", size = 1) +
+  
+  # Labels and title
+  labs(title = "Histogram of AUTOMOTORES with Mean, and 1SD Range",
+       x = "AUTOMOTORES Values", y = "Frequency") +
+  
+  # Add annotation for 1SD range
+  annotate("text", x = mean_val, y = 10, 
+           label = paste(round(percentage_1sd, 1), "1SD", sep = ""), 
+           color = "black", size = 5, hjust = 0.5, vjust = -1) +
+  
+  theme_minimal()
+
+# cv
+paste0('cv: ', round(std_dev / mean_val * 100), 2)
+
+# variation
+delitos_data %>%
+  st_drop_geometry() %>%
+  select(contains('24')) %>%
+  summarise(
+    across(
+      everything(),
+      ~ ifelse(mean(.x, na.rm = TRUE) != 0, 
+               sd(.x, na.rm = TRUE) / mean(.x, na.rm = TRUE), 
+               NA),  # Compute CV safely
+      .names = "{col}"
+    )
+  ) %>%
+  t() %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column(var = "Crime Type") %>%
+  mutate(V1 = round(V1, 2)) %>%
+  rename(Variation = V1) %>%
+  gt()
+
 ```
 
-Since the coefficient of variation (CV) is used to compare the variability of datasets with different units or widely differing means, and a lower CV indicates less variability relative to the mean, we observe that a CV of 10.262% suggests high variability.
-
-Regarding the mean, which is a measure of central tendency (meaning its calculated value represents the center of the dataset) a result of 0.398 suggests that most areas have few or no recorded events. This implies that the mean may be influenced by a few high values, making it an unreliable representation of the central tendency.
-
-Additionally, the standard deviation, which measures the dispersion of the data relative to the mean, is 4.084 in this case. This indicates that values can vary by approximately ±4.084 from the mean of 0.398, further confirming the high variability in the dataset.
-
-Finally, the ranges within the standard deviation variation (1SD) are calculated using the lower limit as the mean minus the standard deviation and the upper limit as the mean plus the standard deviation. The ranges within the 1SD variation, with a lower limit of -3.69 and an upper limit of 4.48, indicate that the events are highly skewed. This is because most values fall between 0 and 4 (with negative numbers being adjusted to 0). In this dataset, negative values are not possible. If negative values appear, it suggests that the data distribution is highly asymmetric.
-
-Prompt: What is the meaning of having percentages of values within 1SD of "within_1sd: 48877 - percentage_1sd: 98.52"? Explain in a concise paragraph both numbers.
-
-The result **"within_1sd: 48,877 - percentage_1sd: 98.52"** indicates that **48,877 observations (98.52% of the dataset)** fall within one standard deviation (±1SD) of the mean. In a **normally distributed dataset**, approximately **68%** of values should fall within this range. However, in this case, nearly **99% of the values** are concentrated within this narrow range, suggesting that the dataset is **highly skewed** with most values being very close to the mean and a few extreme outliers inflating the standard deviation. This confirms that **the standard deviation is not a reliable measure of spread for these data**, and alternative measures such as percentiles or transformations should be considered.
+For Antlántico: 
+Data coefficient of variation of 3712 and variation of 3.71 indicate, as we have been confirming through the full analysis, that data is varies a lot relatively from its mean. But not as much as other crime variables do.  
 
 ## Median Absolute Deviation MAD and MAD/median
 
-```         
-> median_val <- median(delitos_data$sum_24HP, na.rm = TRUE)  > print(median_val)  [1] 0 > mad_val <- mad(delitos_data$sum_24HP, na.rm = TRUE)  # Compute MAD > print(mad_val) [1] 0 > lower_bound <- median_val - mad_val > upper_bound <- median_val + mad_val > paste0('lower_bound: ', round(lower_bound, 2), ' - upper_bound: ', round(upper_bound, 2)) [1] "lower_bound: 0 - upper_bound: 0" > within_1mad <- sum(delitos_data$sum_24HP >= lower_bound & delitos_data$sum_24HP <= upper_bound, na.rm = TRUE) > percentage_1mad <- (within_1mad / nrow(delitos_data)) * 100 > paste0('within_1mad: ', round(within_1mad, 2), ' - percentage_1mad: ', round(percentage_1mad, 2)) [1] "within_1mad: 42388 - percentage_1mad: 85.44" > # MAD/Median > paste0('MAD/Median: ', round(mad_val / median_val * 100), 2) [1] "MAD/Median: NaN2"
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Compute statistics
+median_val <- median(delitos_data$sum_24HP, na.rm = TRUE)
+# Es normal que de cero porque es una medida de posición 
+print(median_val)
+mad_val <- mad(delitos_data$sum_24HP, na.rm = TRUE)  # Compute MAD
+print(mad_val)
+
+# Compute the range for first standard deviation
+lower_bound <- median_val - mad_val
+upper_bound <- median_val + mad_val
+paste0('lower_bound: ', round(lower_bound, 2), ' - upper_bound: ', round(upper_bound, 2))
+
+# Count the number of points within 1 MAD
+within_1mad <- sum(delitos_data$sum_24HP >= lower_bound & delitos_data$sum_24HP <= upper_bound, na.rm = TRUE)
+percentage_1mad <- (within_1mad / nrow(delitos_data)) * 100
+paste0('within_1mad: ', round(within_1mad, 2), ' - percentage_1mad: ', round(percentage_1mad, 2))
+
+# Create histogram
+ggplot(delitos_data, aes(x = sum_24HP)) +
+  geom_histogram(binwidth = 5, fill = "blue", alpha = 0.5, color = "black") +
+  
+  # Add vertical lines for mean, median, and 1st SD
+  #geom_vline(aes(xintercept = mean_val), color = "red", linetype = "dashed", size = 1.2) +
+  geom_vline(aes(xintercept = median_val), color = "green", linetype = "dashed", size = 1.2) +
+  geom_vline(aes(xintercept = lower_bound), color = "purple", linetype = "dashed", size = 1) +
+  geom_vline(aes(xintercept = upper_bound), color = "purple", linetype = "dashed", size = 1) +
+  
+  # Labels and title
+  labs(title = "Histogram of HP with Median, and 1MAD Range",
+       x = "HP Values", y = "Frequency") +
+  
+  # Add annotation for 1SD range
+  annotate("text", x = median_val, y = 10, 
+           label = paste(within_1mad, "points (", round(percentage_1mad, 1), "1MAD", sep = ""), 
+           color = "black", size = 5, hjust = 0.5, vjust = -1) +
+  
+  theme_minimal()
+
+# MAD/Median
+paste0('MAD/Median: ', round(mad_val / median_val * 100), 2)
+
 ```
 
-Prompt: What is the interpretation of this results? Explain it.
-
-### **Interpretation of the Results**
-
-These results confirm that the dataset **is highly concentrated around zero**, with minimal variability for most observations and a small number of extreme outliers. Let’s analyze each statistic in detail:
-
-### **1. Median (**`median_val`**)**
-
-📌 **Value obtained:** `0`\
-📌 **Interpretation:**
-
--   The **median is 0**, meaning that at least **50% of the dataset consists of zero values**.
-
--   This suggests that in at least half of the areas analyzed, **no incidents were recorded in 2024**.
-
--   The fact that the median is **so low compared to the mean (0.398 from previous analysis)** confirms that **a small number of extremely high values (outliers) are inflating the mean**.
-
-### **2. Median Absolute Deviation (**`MAD`**)**
-
-📌 **Value obtained:** `0`\
-📌 **Interpretation:**
-
--   The **MAD (Median Absolute Deviation) measures dispersion around the median**.
-
--   Since **MAD = 0**, this means that **the majority of values are exactly equal to the median (0)**.
-
--   In other words, **most of the dataset consists of zeros, with very few nonzero values**.
-
--   **MAD fails to capture variability** because the majority of the data points have the same value.
-
-### **3. Range within** `1MAD`
-
-📌 **Lower and Upper Bound:** `"lower_bound: 0 - upper_bound: 0"`\
-📌 **Interpretation:**
-
--   The **range defined by 1 MAD** only includes the value **0**, meaning that **all values inside this range are zeros**.
-
--   This further confirms that the dataset **has little dispersion for most observations, except for a few extreme values**.
-
-### **4. Percentage of Values within** `1MAD`
-
-📌 **Value obtained:** `"within_1mad: 42,388 - percentage_1mad: 85.44%"`\
-📌 **Interpretation:**
-
--   **85.44% of observations are exactly 0**.
-
--   This means that only **14.56% of the dataset contains any nonzero values**.
-
--   The data is **highly "zero-inflated"**, meaning that most areas **did not record any incidents in 2024**, while only a few areas had significant crime counts.
-
-### **5.** `MAD / Median` **Ratio**
-
-📌 **Value obtained:** `"MAD/Median: NaN2"`\
-📌 **Interpretation:**
-
--   This calculation **fails (`NaN`) because the denominator is `0`** (since the median is 0).
-
--   This confirms that **MAD/Median cannot be used as a measure of relative dispersion in this dataset**.
-
--   The presence of so many zeros makes **traditional measures of dispersion ineffective**, and alternative methods should be used.
-
-## **Conclusion**
-
-In 85.44% of Antioquia, no personal thefts were recorded, indicating that thefts are concentrated in specific areas of the department. This highlights the need for intervention strategies and measures not only from law enforcement but also through active citizen participation. The state should implement prevention and control activities in collaboration with the community.
-
-## Prompts {.unnumbered}
-
-1.  Prompt: What is the meaning of the values from sum_24HP that represents the sum of robberies to people in 2024 (where "24" stands for the year).
-2.  Prompt: What is the meaning of having percentages of values within 1SD of "within_1sd: 48877 - percentage_1sd: 98.52"? Explain in a concise paragraph both numbers.
-3.  Prompt: What is the interpretation of this results? Explain it.
-
-# Appendix 1 {.appendix, .unnumbered}
-
-## Augmented Data Analyst {.unnumbered}
-
-## Prompts {.unnumbered}
-
-----------------------------------------------------------------------------------------
-
-**Course:** Advance Analytics of Data.
-
-**Student:** Andrés Cervantes Torres.
-
-**Professor**: Andrés Pérez-Coronado.
-
-Note: for my analysis I've chosen region \[88\] =\> (**archipiélago de san andrés providencia y santa catalina**).
-
--\> delitos_data \<- delitos_data\[delitos_data\$dpto_ccdgo == c ('88'), \]
-
-Is this line the 88 code represent San Andres y Providencia from DANE data base standared codes.
-
--\> dim(delitos_data)
-
-It is saying the dimension about specific data for the region select previously. In this case 883 rows and 91 colums.
-
--\> summary(delitos_data)
-
-This line permits to know measurements about different kind of crymes against population specifically in region 88. For instance, we can see one of them called "24HP", whos meaning is theft from persons. This summary shows measures of central tendency: Min: 0, 1st Qu.:0, Median: 0, Mean: 0, 3rd Qu.: 0, Max: 0.
-
--\> quantile(delitos_data\$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE)
-
-Prompt: Chat, What does the R "quantile" function tell me, applying the following parameters: \# quantile quantile(delitos_data\$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE)?
-
-OpenAI GPT-4o
-
-The quantile() function in R is used to calculate the quartiles, quintiles, deciles, or any other percentile of a dataset. In your case, by applying quantile(delitos_data\$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE), you are asking to find the deciles of the sum_24HP column of the crímenes_data dataframe.
-
-Here we have results for region 88 (San Andrés y Providencia):
-
-0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
-
-0 0 0 0 0 0 0 0 0 1 12
-
-This quantile result says we have concentrated major amount of crimes concentrated in some specific municipalities. 92.30% of crimes have been located in 20% of territory.
-
--\> write.csv(delitos_data, file = "delitos_data.csv", row.names = FALSE)
-
-I've applied this line to export "delitos_data" dataset to Excel.
-
--\> boxplot(delitos_data\$sum_24HP, main = "Boxplot of PERSONAS", horizontal = TRUE)
-
-This boxplot represents the distribution of values ​​in sum_24HP, showing the median, quartiles, and any outliers in the distribution.
-
-![](images/clipboard-3840180970.png)
-
-## -\> **Skewness**
-
-Applying skewness to 24HP with value equal to 7.002492, we can say it is extremely high and suggests a strong positive skewness in the distribution of your data.
-
-Prompt: Chat, aún sabiendo que, mean_x = 0.2536806, ¿consideras que un skewness de 7.002492 es muy alto?
-
-A skewness value greater than 1 (or even 2) usually indicates that the distribution is skewed to the right. In your case, a skewness of 7.002492 indicates that most of your values ​​are low (as suggested by a mean of 0.2536806), but there are some very high values ​​(outliers) that are affecting the mean and causing the distribution to be unbalanced.
-
-![](images/clipboard-1566564623.png)
-
-## -\> **Kurtosis**
-
-In this case applying \[kurtosis(delitos_data\$sum_24HP, na.rm = TRUE)\] we get 65.45428 as result.
-
-Taking this result into account and we knowing that:
-
-A kurtosis of $( 0 )$ (excess kurtosis) indicates tail behavior similar to a normal distribution. Positive kurtosis $( g_2 > 0 )$ signifies heavier tails and more outliers (leptokurtic), while negative kurtosis $( g_2 < 0 )$ indicates lighter tails and fewer outliers (platykurtic).
-
-![](images/clipboard-3989889599.png){width="311"}
-
-We can define this Kurtosis as Leptokurtic for 24HP variable since it means we have more outliers.
-
-## -\> **Coefficient of Variation**
-
-The Coefficient of Variation (CV) is a statistical measure that indicates the relative dispersion of data in relation to the mean. It is expressed as a percentage and is used to compare variability between different datasets or measurements.
-
-Performing the calculations in R, I obtained the mean and standard deviation (0.253680634 and 0.969591831), respectively. For this exercise, the instructor suggested using a CV calculated as a percentage. If I apply the formula: round(std_dev / mean_val \* 100) The result is 3822%. I wasn't sure how R performed these calculations, so I transferred the data frame to Microsoft Excel to analyze some aspects.
-
-![](images/clipboard-1333209121.png)
-
-Now I know that R takes all the values, applies an AVERAGE (arithmetic average), and returns the result. I also know that the standard deviation R calculates uses the formula that applies to a sample (x̅), not to the population (μ).
-
-Chat, I'm doing some Advanced Statistical Analysis with R. If the data set I'm analyzing gives me the following result: mean: 0.2536806 standard deviation: 0.9695918 And if with this, the Coefficient of Variation gives me: 3822%. What can I determine from that result? What conclusion can I draw?
-
-OpenAI GPT-4o - start of comment
-
-The **Coefficient of Variation (CV)** is a measure of the relative dispersion of data relative to its mean and is expressed as a percentage. In your case, you have the following results:
-
--   **Mean**: 0.2536806
--   **Standard Deviation**: 0.9695918
--   **Coefficient of Variation (CV)**: 3822%
-
-### Interpretation of the Coefficient of Variation
-
-1.  **Highly Dispersed**:
-
--   A CV of **3822%** suggests that there is a large variability in your data compared to the mean. This means that, on average, the standard deviation is more than 38 times greater than the mean.
-
-2.  **Mean**:
-
--   Most of your data can vary significantly and could include numerous extreme values ​​or outliers.
--   Since the mean is relatively low, it suggests that the data is very inconsistent or that there are many zeros in the data set.
-
-### Conclusions
-
-1.  **Data Instability**:
-
--   High variability indicates that the data is not stable, and it may be difficult to make accurate predictions based on the mean.
-
-2.  **Attitude Toward Analysis**:
-
--   You might consider exploring the data further, looking for outliers, distributions, and other descriptive statistics that can help you understand the behavior of your data.
-
-3.  **Further Analysis**:
-
--   You could use visualizations (such as histograms or boxplots) to better understand the distribution and variability of the data.
-
-Such a high CV is often an indication that further analysis is needed to provide meaningful insights. If you need more information on how to proceed or perform other types of analysis, let me know!
-
-OpenAI GPT-4o - end of comment
-
-Well, as mentioned in the ChatGPT analysis, within the 24HP (Personal Theft) dataset, we definitely have a large number of zeros. This is because we begin to find cases starting at 90% of the data.
-
-![](images/clipboard-3508930267.png)
-
-Now, if we compare the CVs of the different crimes, we can say that there is considerable variability in the occurrence of SUM_24HP (3.82) compared to its mean (0.2536806). We also note that there are other crimes with much higher CVs. Therefore, a CV of 3.82 for SUM_24HP suggests that this illegal act is less predictable and could be affected by external factors or changing conditions in the region.
-
-## -\> Median Absolute Deviation MAD and MAD/median
-
+Atlántico: 
+The Median Absolute Deviation (MAD) is a robust measure of variability that quantifies the dispersion of a dataset, in this case, as it is 88,41, indicates that  relative variability of robbery data is very high.
+
+## Covariance Matrix
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+delitos_data %>%
+  st_drop_geometry() %>%
+  select(contains("24")) %>%
+  cov() %>%
+  round(2) %>%
+  knitr::kable(digits = 2, caption = "Covariance Matrix")
+
+# With the covariance matrix we can see that robbery to people is related to homicides, personal injuries, sexual abuse, and others. sum_24HP has a high variance (0.37), meaning its values fluctuate significantly. sum_24LP and sum_24VI have a covariance of 0.04, showing a moderate positive relationship. sum_24HP has higher covariances with other variables (0.05, 0.06), suggesting it tends to move in the same direction as these variables. Many values are close to zero, which means weak or no correlation between those variables.
+
+
+```
+
+## Covariance Matrix of Log-Transformed Data
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Define the dataset
+x <- delitos_data$sum_24HP
+
+# 1. Compute Raw Arithmetic Mean
+arithmetic_mean <- mean(x)
+print(arithmetic_mean)
+
+# 2. Compute Log-Mean (Multiplicative Center)
+log_x <- log(x + 1)  # Take logarithm of values
+head(log_x)
+log_mean <- mean(log_x)  # Compute mean in log-space
+print(log_mean)
+log_mean_exp <- exp(log_mean)  # Convert back to original scale
+print(log_mean_exp)
+
+# Create the comparison table
+comparison_table <- data.frame(
+  Index = seq_along(x),  # Just an index for x-axis
+  Original_Value = x,
+  Log_Value = log_x
+)
+
+p1 <- ggplot(comparison_table, aes(x = Original_Value, y = Log_Value)) +
+  geom_line(color = "gray70", size = 0.7, alpha = 0.5) +  # Thin line connecting points
+  geom_point(alpha = 0.7, color = "blue") +  # Scatter points with transparency
+  labs(
+    title = "Scatter Plot: Original vs. Log-Transformed Values",
+    x = "Original Values",
+    y = "Log-Transformed Values"
+  ) +
+  theme_minimal()
+
+# Add marginal histogram
+ggMarginal(
+  p1,
+  type = "histogram",         # Add marginal histograms
+  bins = 40,                  # Number of bins for the histogram
+  margins = "both",           # Add histogram to both x and y margins
+  size = 5,                   # Size of the histograms relative to the scatter plot
+  fill = "gray",              # Fill color for the histogram
+  color = "black",            # Outline color for the histogram
+  alpha = 0.5                 # Transparency
+)
+
+```
+
+Atlántico: 
+In this case, as the data is very disperse, analyzing the log-transformed data could provide more accurate insights.
+
+```{r}
+#| include: false
+
+# Store values for inline Quarto text
+log_values <- paste(round(head(comparison_table$Log_Value), 2), collapse = ", ")
+original_values <- paste(head(comparison_table$Original_Value), collapse = ", ")
+
+#| echo: true
+#| message: false
+#| warning: false
+
+#log transformed data
+# Compute statistics for raw and log-transformed data
+mean_raw <- mean(delitos_data$sum_24HP, na.rm = TRUE)
+sd_raw <- sd(delitos_data$sum_24HP, na.rm = TRUE)
+mad_raw <- mad(delitos_data$sum_24HP, na.rm = TRUE)
+
+delitos_data_log <- delitos_data %>%
+  #mutate(LOG_AUTOMOTORES = log(AUTOMOTORES + 1))
+  mutate(LOG_AUTOMOTORES = log1p(sum_24HP))  # log1p(x) = log(1 + x) to handle zeros
+
+mean_log <- mean(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE)
+sd_log <- sd(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE)
+mad_log <- mad(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE)
+
+# Compute statistics for raw and log-transformed data
+data.frame(
+  Measure = c("Mean", "Median", "Standard Deviation", "MAD"),
+  Raw_Data = c(mean(delitos_data$sum_24HP, na.rm = TRUE),
+               median(delitos_data$sum_24HP, na.rm = TRUE),
+               sd(delitos_data$sum_24HP, na.rm = TRUE),
+               mad(delitos_data$sum_24HP, na.rm = TRUE)),
+  Log_Transformed_Data = c(mean(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE),
+                           median(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE),
+                           sd(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE),
+                           mad(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE)))
+
+# Transform the data to a long format for ggplot
+delitos_long <- delitos_data %>%
+  st_drop_geometry() %>%
+  select(contains('24')) %>%
+  pivot_longer(cols = everything(), names_to = "Crime Type", values_to = "Value")
+
+# Create faceted histograms
+ggplot(delitos_long, aes(x = Value)) +
+  geom_histogram(bins = 30, fill = "skyblue", color = "black", alpha = 0.7) +
+  facet_wrap(~ `Crime Type`, scales = "free") +  # Facet by crime type
+  theme_minimal() +
+  labs(
+    title = "Distributions of Crime Data",
+    x = "Value",
+    y = "Frequency"
+  ) +
+  theme(
+    axis.text.x = element_text(size = 5)  # Reduce the font size of X-axis text
+  )
+
+# Transform the data to long format and apply log transformation
+delitos_long_log <- delitos_data %>%
+  st_drop_geometry() %>%
+  select(contains('24')) %>%
+  mutate(across(everything(), ~ log(.x), .names = "{col}")) %>%  # Log transform (log(x + 1) to avoid log(0))
+  pivot_longer(cols = everything(), names_to = "Crime Type", values_to = "Log Value")
+
+# Create faceted histograms for log-transformed values
+ggplot(delitos_long_log, aes(x = `Log Value`)) +
+  geom_histogram(bins = 30, fill = "skyblue", color = "black", alpha = 0.7) +
+  facet_wrap(~ `Crime Type`, scales = "free") +  # Facet by crime type
+  theme_minimal() +
+  labs(
+    title = "Log-Transformed Distributions of Crime Data",
+    x = "Log Value",
+    y = "Frequency"
+  ) +
+  theme(
+    axis.text.x = element_text(size = 3)  # Reduce the font size of X-axis text
+  )
+
+# Covariance Matrix (Log-Transformed)
+delitos_data %>%
+  st_drop_geometry() %>%
+  select(contains('24')) %>%
+  mutate(across(everything(), ~ log(.x+1))) %>%  # Log-transform (+1 to handle zeros)
+  cov() %>%
+  round(2) %>%
+  kable(digits = 2, caption = "Covariance Matrix (Log-Transformed)")
+
+```
+
+Atlántico: 
+Log transformation is often used to reduce skewness and normalize data when the original variables have a wide range of values. The weaker covariances in the log-transformed matrix suggest that some of the relationships observed in the original matrix were driven by differences in scale rather than true correlation.
+
+## Redundant Variables
+
+Redundant variables provide little additional information due to high correlation with others, leading to multicollinearity in models.
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Define the matrix A
+matrix_a <- matrix(c(4, 2,
+                     2, 3), nrow = 2, byrow = TRUE)
+print("Matrix A:")
+print(matrix_a)
+
+# Compute the eigen decomposition using R's built-in eigen() function
+eigen_builtin <- eigen(matrix_a)
+print("Built-in eigen() values:")
+print(eigen_builtin$values)
+print("Built-in eigen() vectors:")
+print(eigen_builtin$vectors)
+
+# Multiply A by the matrix of eigenvectors:
+# Each column of eigen_builtin$vectors is an eigenvector.
+res <- matrix_a %*% eigen_builtin$vectors
+print("A * eigenvectors:")
+print(res)
+
+# Multiply the eigenvector matrix by the diagonal matrix of eigenvalues.
+res2 <- eigen_builtin$vectors %*% diag(eigen_builtin$values)
+print("eigenvectors * eigenvalues:")
+print(res2)
+
+# Check if these two matrices are equal (they should be equal within numerical precision)
+are_equal <- all.equal(res, res2)
+print("Are A * eigenvectors and eigenvectors * eigenvalues equal?")
+print(are_equal)
+```
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Covariance matrix 
+cm_delitos_data <- delitos_data %>%
+  st_drop_geometry() %>%
+  select(contains('24')) %>%
+  select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
+  cov()
+
+# Compute eigenvalues and eigenvectors
+eigen_results <- cm_delitos_data %>% eigen()
+
+# Extract eigenvalues and eigenvectors
+eigenvalues <- eigen_results$values
+eigenvectors <- eigen_results$vectors
+
+# Display eigenvalues and eigenvectors
+print(eigenvalues)
+head(eigenvectors)
+
+# The Smallest Eigenvalues
+sort(eigenvalues, decreasing = FALSE)
+
+# The smallest eigenvalue is approximately zero
+smallest_eigenvalue <- min(eigenvalues)
+print(smallest_eigenvalue)
+
+# Corresponding eigenvector
+smallest_eigenvector <- eigenvectors[, which.min(eigenvalues)]
+print(smallest_eigenvector)
+
+# Normalize the eigenvector by dividing by the largest absolute value
+normalized_eigenvector <- smallest_eigenvector / max(abs(smallest_eigenvector))
+print(normalized_eigenvector)
+
+# Sorted normalize the eigenvector
+sort(abs(normalized_eigenvector), decreasing = T)
+
+# Get numeric variable names (order matches eigenvector indices)
+variable_names <- colnames(cm_delitos_data)
+
+# Sort normalized eigenvector by absolute contribution (descending order)
+sorted_contributions <- sort(abs(normalized_eigenvector), decreasing = TRUE)
+
+# Get the indices of the top contributions
+top_indices <- order(abs(normalized_eigenvector), decreasing = TRUE)
+
+# Get the names of the top variables
+top_variable_names <- variable_names[top_indices]
+
+# Print the top variable names
+print(top_variable_names)
+
+# Fit a regression model to confirm the relationship
+model <- lm(sum_24HOM ~ sum_24HA + sum_24EX + sum_24HM + sum_24LP + sum_24HR + sum_24VI + sum_24HC + sum_24HP + sum_24DS, 
+            data = data.frame(delitos_data))
+
+## AQUÍ TIENE QUE SER FRENTE A TOOOOODAS LAS VARIABLES, NO SOLO LAS DE LOS EIGEN VALUES MÁS BAJOS 
+
+# model <- lm(sum_24SE ~ sum_24DS + sum_24EX + sum_24SS + sum_24LP + 
+#               sum_24HOM + sum_24HR + sum_24VI + sum_24HM + 
+#               sum_24HA + sum_24HP + sum_24HC, 
+#             data = data.frame(delitos_data))
+# 
+# model <- lm(sum_24SS ~ sum_24EX + sum_24HC + sum_24HR + 
+#                   sum_24HA + sum_24DS + sum_24HM + 
+#                   sum_24HOM + sum_24HP + sum_24VI + sum_24LP,
+#                 data = data.frame(delitos_data))
+# 
+# model <- lm(sum_24HOM ~ sum_24HA + sum_24EX + sum_24HM +
+#               sum_24LP + sum_24HR + sum_24VI +
+#               sum_24HC + sum_24HP + sum_24DS,
+#             data = data.frame(delitos_data))
+
+summary(model)
+
+# Variance Inflation Factors
+vif(model)
+
+
+```
+
+Atlántico: 
+By the eigen values, we saw that they where not so small, meaning that variables cover a significant variability. Afterwards, by running the model, for HP we discovered that we had a several significant variables: HA, EX, HM, LP, and VI.And more importantly, we saw that we had residuals, therefore, the variable should not be excluded from the model. 
+From the VI factors, we could see that there is multicoliniality with EX, VI, HP and DS.  
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+cov_matrix <- delitos_data %>%
+  st_drop_geometry() %>%
+  select(contains('24')) %>%
+  #select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
+  cov() 
+
+# Effective Variance
+det(cov_matrix)^(1/ncol(cov_matrix))
+
+# Log-Transformed Effective Variance
+det(log(cov_matrix + 1))^(1/ncol(cov_matrix))
+
+# Effective Standard Deviation
+det(cov_matrix)^(1/(ncol(cov_matrix) * 2))
+
+# Log-Transformed Effective Standard Deviation
+det(log(cov_matrix + 1))^(1/(ncol(cov_matrix) * 2))
+
+# Todo me dio cero - aquí estamos viendo la dispersión con respecto a la media. Lo que dicen estos resultados es que an Atlántico los delitos están muy cerca de la media, o sea que el crimen se
+```
+
+
+# Key Players and Topics
+
+# Non-Parametric Correlation {.unnumbered}
+
+Correlation measures the strength and direction of association between two variables. While Pearson's correlation requires a linear relationship and normally distributed data, \emph{Spearman's rank correlation} and \emph{Kendall's tau} are \emph{non-parametric} measures, making them ideal for analyzing data that may not be linear or normally distributed.
+
+## Spearman's Rank Correlation
+
+Spearman's correlation coefficient $\rho$ is based on \emph{ranked} data. For two variables $X$ and $Y$, we replace each observation by its rank.
+
+```{r}
+#| include: false
+source('setup.R')
+```
+
+```{r}
+```
