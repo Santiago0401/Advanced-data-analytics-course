@@ -1,17 +1,16 @@
 # Appendix 1 {.appendix, .unnumbered}
 
-### Nathaly P[aez
-### Andr[es Cervantes 
+### Nathaly Páez
+### Andrés Cervantes 
 ### Laura Duque 
 
 #### Maestría en Matemáticas Aplicadas y Ciencias de la Computación 
 #### Abril 2025
 
-##Análisis del conjuto de datos
+##Data Analysis
 
-For the assignment we selected three departments: Antioquia, Valle del Cauca and Atlántico; and ran the statistic analysis for each individually. From the data summary, for most crime variables, from the first to the third quantile values are 0, whereas the maximum value usually is a bigger number, which allows us to inquire that crime is focused in some polygons. 
+For the assignment we selected three departments: Antioquia, Valle del Cauca and Atlántico; and ran the statistic analysis for each individually to compare and set strategies to reduce crime incidence. The selected problematic is robbery to people (HP). 
 
-We decided to focus in the problemático fo robbery to people. From the boxplot and the quantiles analysis we can see that, as the other crime data, homicides in Atlántico are centralized in a few polygons, with a 10% of the polygons accounting all homicides in 2024.
 
 ```{r}
 #| echo: true
@@ -21,7 +20,10 @@ We decided to focus in the problemático fo robbery to people. From the boxplot 
 #setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 # packages
-list_packages = c('readxl', 'dplyr', 'moments', 'tidyr', 'tibble', 'gt', 'ggplot2', 'fmsb', 'car', 'reshape2', 'knitr', 'gridExtra', 'ggExtra', 'sf', 'leaflet', 'igraph', 'ggraph', 'tidygraph', 'spdep')
+list_packages = c('readxl', 'dplyr', 'moments', 'tidyr', 'tibble', 'gt', 'ggplot2', 
+                  'fmsb', 'car', 'reshape2', 'knitr', 'gridExtra', 'ggExtra', 'sf', 
+                  'leaflet', 'igraph', 'ggraph', 'tidygraph', 'spdep', 'classInt', 
+                  'corrplot', 'spData', 'Matrix')
 new.packages = list_packages[!(list_packages %in% installed.packages()[,"Package"])]
 if (length(new.packages)) {
   install.packages(new.packages)
@@ -32,10 +34,14 @@ for (package in list_packages){
 
 # Load the dataset
 delitos_data <- st_read("data/spatial/crime_spatial_course.gpkg")
-delitos_data <- delitos_data[delitos_data$dpto_ccdgo == c('08',"05","76" ), ] # 08 Atlántico 76  Valle del Cauca y 05 Antioquia
+delitos_data_Atl <- delitos_data[delitos_data$dpto_ccdgo == ('08'),] # Dataset with Atlántico Data 
+delitos_data <- delitos_data[delitos_data$dpto_ccdgo == c('08',"05","76" ), ] # dataset with data from analysed departments: 08 Atlántico 76  Valle del Cauca 05 Antioquia
 
 dim(delitos_data)
 summary(delitos_data)
+
+dim(delitos_data_Atl)
+summary(delitos_data_Atl)
 
 # interactive polygons location
 leaflet(delitos_data) %>%
@@ -43,13 +49,16 @@ leaflet(delitos_data) %>%
   addPolygons(color = "steelblue", weight = 1, fillOpacity = 0.5)
 
 # quantile
-quantile(delitos_data$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantile(delitos_data_Atl$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE)
 
 #boxplot
-boxplot(delitos_data$sum_24HP, main = "Boxplot of Homicides in Atlántico", horizontal = TRUE)
+boxplot(delitos_data_Atl$sum_24HP, main = "Boxplot of HP in Atlántico", horizontal = TRUE)
 
 
 ```
+Atléntico: 
+From the quantile and boxplot we can conclude that robbery data is higly concentrated. 
+
 
 ## Skewness
 
@@ -59,34 +68,28 @@ boxplot(delitos_data$sum_24HP, main = "Boxplot of Homicides in Atlántico", hori
 #| warning: false
 
 # step by step
-n <- length(delitos_data$sum_24HP) 
-mean_x <- mean(delitos_data$sum_24HP)
-sd_x <- sd(delitos_data$sum_24HP)  # Uses (n-1) denominator
-z_scores <- (delitos_data$sum_24HP - mean_x) / sd_x
+n <- length(delitos_data_Atl$sum_24HP) 
+mean_x <- mean(delitos_data_Atl$sum_24HP)
+sd_x <- sd(delitos_data_Atl$sum_24HP)  # Uses (n-1) denominator
+z_scores <- (delitos_data_Atl$sum_24HP - mean_x) / sd_x
 z_cubed <- z_scores^3
 sum_cubed <- sum(z_cubed)
 skewness <- (n / ((n - 1) * (n - 2))) * sum_cubed
 paste0('sum_24HP: ', skewness)
 
 # function
-skewness(delitos_data$sum_24HP, na.rm = TRUE)
+skewness(delitos_data_Atl$sum_24HP, na.rm = TRUE)
 
 # skewness
-delitos_data %>%
+delitos_data_Atl %>%
   st_drop_geometry() %>%
-  select(dpto_ccdgo, contains('24')) %>%
-  group_by(dpto_ccdgo) %>%
+  select(contains('24')) %>%
   summarise(across(everything(), ~ skewness(.x, na.rm = TRUE))) %>%
-  pivot_longer(
-    cols = -dpto_ccdgo,
-    names_to = "Crime Type",
-    values_to = "Skewness"
-  ) %>%
-  mutate(Skewness = round(Skewness, 2)) %>%
-  pivot_wider(
-    names_from = dpto_ccdgo,
-    values_from = Skewness
-  ) %>%
+  t() %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column(var = "Crime Type") %>%
+  mutate(V1 = round(V1, 2)) %>%
+  rename(Skewness = V1) %>%
   gt()
 
 ```
@@ -101,7 +104,6 @@ Robberies in Atlántico data have a skewness of 10.0324, this means that the dis
 #| echo: true
 #| message: false
 #| warning: false
-
 # step by step
 z_fourth <- z_scores^4
 sum_fourth <- sum(z_fourth)
@@ -109,24 +111,18 @@ kurtosis <- ((n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) * sum_fourth - (3 * 
 print(kurtosis)
 
 # function
-kurtosis(delitos_data$sum_24HP, na.rm = TRUE)
+kurtosis(delitos_data_Atl$sum_24HP, na.rm = TRUE)
 
-# kurtosis
-delitos_data %>%
+# Kurtosis
+delitos_data_Atl %>%
   st_drop_geometry() %>%
-  select(dpto_ccdgo, contains('24')) %>%
-  group_by(dpto_ccdgo) %>%
+  select(contains('24')) %>%
   summarise(across(everything(), ~ kurtosis(.x, na.rm = TRUE))) %>%
-  pivot_longer(
-    cols = -dpto_ccdgo,
-    names_to = "Crime Type",
-    values_to = "Kurtosis"
-  ) %>%
-  mutate(Kurtosis = round(Kurtosis, 2)) %>%
-  pivot_wider(
-    names_from = dpto_ccdgo,
-    values_from = Kurtosis
-  ) %>%
+  t() %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column(var = "Crime Type") %>%
+  mutate(V1 = round(V1, 2)) %>%
+  rename(Kurtosis = V1) %>%
   gt()
 
 ```
@@ -142,9 +138,9 @@ Data has a kurtosis of 206.24, this shows a leptokurtic distribution, with a hea
 #| warning: false
 
 # Compute statistics
-mean_val <- mean(delitos_data$sum_24HP, na.rm = TRUE)
+mean_val <- mean(delitos_data_Atl$sum_24HP, na.rm = TRUE)
 print(mean_val)
-std_dev <- sd(delitos_data$sum_24HP, na.rm = TRUE)
+std_dev <- sd(delitos_data_Atl$sum_24HP, na.rm = TRUE)
 print(std_dev)
 
 # Compute the range for first standard deviation
@@ -153,12 +149,12 @@ upper_bound <- mean_val + std_dev
 paste0('lower_bound: ', round(lower_bound, 2), ' - upper_bound: ', round(upper_bound, 2))
 
 # Count the number of points within 1 standard deviation
-within_1sd <- sum(delitos_data$sum_24HP >= lower_bound & delitos_data$sum_24HP <= upper_bound, na.rm = TRUE)
-percentage_1sd <- (within_1sd / nrow(delitos_data)) * 100
+within_1sd <- sum(delitos_data_Atl$sum_24HP >= lower_bound & delitos_data_Atl$sum_24HP <= upper_bound, na.rm = TRUE)
+percentage_1sd <- (within_1sd / nrow(delitos_data_Atl)) * 100
 paste0('within_1sd: ', round(within_1sd, 2), ' - percentage_1sd: ', round(percentage_1sd, 2))
 
 # Create histogram
-ggplot(delitos_data, aes(x = sum_24HP)) +
+ggplot(delitos_data_Atl, aes(x = sum_24HP)) +
   geom_histogram(binwidth = 5, fill = "blue", alpha = 0.5, color = "black") +
   
   # Add vertical lines for mean, median, and 1st SD
@@ -182,7 +178,7 @@ ggplot(delitos_data, aes(x = sum_24HP)) +
 paste0('cv: ', round(std_dev / mean_val * 100), 2)
 
 # variation
-delitos_data %>%
+delitos_data_Atl %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
   summarise(
@@ -204,7 +200,7 @@ delitos_data %>%
 ```
 
 For Antlántico: 
-Data coefficient of variation of 3712 and variation of 3.71 indicate, as we have been confirming through the full analysis, that data is varies a lot relatively from its mean. But not as much as other crime variables do.  
+Data coefficient of variation of 3712 and variation of 3.71 indicate, as we have been confirming through the full analysis, that robbery data varies a lot relatively from its mean. But not as much as other crime variables do.  
 
 ## Median Absolute Deviation MAD and MAD/median
 
@@ -214,10 +210,10 @@ Data coefficient of variation of 3712 and variation of 3.71 indicate, as we have
 #| warning: false
 
 # Compute statistics
-median_val <- median(delitos_data$sum_24HP, na.rm = TRUE)
+median_val <- median(delitos_data_Atl$sum_24HP, na.rm = TRUE)
 # Es normal que de cero porque es una medida de posición 
 print(median_val)
-mad_val <- mad(delitos_data$sum_24HP, na.rm = TRUE)  # Compute MAD
+mad_val <- mad(delitos_data_Atl$sum_24HP, na.rm = TRUE)  # Compute MAD
 print(mad_val)
 
 # Compute the range for first standard deviation
@@ -226,12 +222,12 @@ upper_bound <- median_val + mad_val
 paste0('lower_bound: ', round(lower_bound, 2), ' - upper_bound: ', round(upper_bound, 2))
 
 # Count the number of points within 1 MAD
-within_1mad <- sum(delitos_data$sum_24HP >= lower_bound & delitos_data$sum_24HP <= upper_bound, na.rm = TRUE)
-percentage_1mad <- (within_1mad / nrow(delitos_data)) * 100
+within_1mad <- sum(delitos_data_Atl$sum_24HP >= lower_bound & delitos_data_Atl$sum_24HP <= upper_bound, na.rm = TRUE)
+percentage_1mad <- (within_1mad / nrow(delitos_data_Atl)) * 100
 paste0('within_1mad: ', round(within_1mad, 2), ' - percentage_1mad: ', round(percentage_1mad, 2))
 
 # Create histogram
-ggplot(delitos_data, aes(x = sum_24HP)) +
+ggplot(delitos_data_Atl, aes(x = sum_24HP)) +
   geom_histogram(binwidth = 5, fill = "blue", alpha = 0.5, color = "black") +
   
   # Add vertical lines for mean, median, and 1st SD
@@ -265,17 +261,18 @@ The Median Absolute Deviation (MAD) is a robust measure of variability that quan
 #| echo: true
 #| message: false
 #| warning: false
-delitos_data %>%
+delitos_data_Atl %>%
   st_drop_geometry() %>%
   select(contains("24")) %>%
   cov() %>%
   round(2) %>%
   knitr::kable(digits = 2, caption = "Covariance Matrix")
 
-# With the covariance matrix we can see that robbery to people is related to homicides, personal injuries, sexual abuse, and others. sum_24HP has a high variance (0.37), meaning its values fluctuate significantly. sum_24LP and sum_24VI have a covariance of 0.04, showing a moderate positive relationship. sum_24HP has higher covariances with other variables (0.05, 0.06), suggesting it tends to move in the same direction as these variables. Many values are close to zero, which means weak or no correlation between those variables.
-
 
 ```
+
+Atlántico: 
+The covariance matrix shows that robbery to people is related to homicides, personal injuries, sexual abuse, and others. sum_24HP has a high variance (0.37), meaning its values fluctuate significantly. sum_24LP and sum_24VI have a covariance of 0.04, showing a moderate positive relationship. sum_24HP has higher covariances with other variables (0.05, 0.06), suggesting it tends to move in the same direction as these variables. Many values are close to zero, which means weak or no correlation between those variables.
 
 ## Covariance Matrix of Log-Transformed Data
 
@@ -285,7 +282,7 @@ delitos_data %>%
 #| warning: false
 
 # Define the dataset
-x <- delitos_data$sum_24HP
+x <- delitos_data_Atl$sum_24HP
 
 # 1. Compute Raw Arithmetic Mean
 arithmetic_mean <- mean(x)
@@ -346,11 +343,11 @@ original_values <- paste(head(comparison_table$Original_Value), collapse = ", ")
 
 #log transformed data
 # Compute statistics for raw and log-transformed data
-mean_raw <- mean(delitos_data$sum_24HP, na.rm = TRUE)
-sd_raw <- sd(delitos_data$sum_24HP, na.rm = TRUE)
-mad_raw <- mad(delitos_data$sum_24HP, na.rm = TRUE)
+mean_raw <- mean(delitos_data_Atl$sum_24HP, na.rm = TRUE)
+sd_raw <- sd(delitos_data_Atl$sum_24HP, na.rm = TRUE)
+mad_raw <- mad(delitos_data_Atl$sum_24HP, na.rm = TRUE)
 
-delitos_data_log <- delitos_data %>%
+delitos_data_log <- delitos_data_Atl %>%
   #mutate(LOG_AUTOMOTORES = log(AUTOMOTORES + 1))
   mutate(LOG_AUTOMOTORES = log1p(sum_24HP))  # log1p(x) = log(1 + x) to handle zeros
 
@@ -361,17 +358,17 @@ mad_log <- mad(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE)
 # Compute statistics for raw and log-transformed data
 data.frame(
   Measure = c("Mean", "Median", "Standard Deviation", "MAD"),
-  Raw_Data = c(mean(delitos_data$sum_24HP, na.rm = TRUE),
-               median(delitos_data$sum_24HP, na.rm = TRUE),
-               sd(delitos_data$sum_24HP, na.rm = TRUE),
-               mad(delitos_data$sum_24HP, na.rm = TRUE)),
+  Raw_Data = c(mean(delitos_data_Atl$sum_24HP, na.rm = TRUE),
+               median(delitos_data_Atl$sum_24HP, na.rm = TRUE),
+               sd(delitos_data_Atl$sum_24HP, na.rm = TRUE),
+               mad(delitos_data_Atl$sum_24HP, na.rm = TRUE)),
   Log_Transformed_Data = c(mean(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE),
                            median(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE),
                            sd(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE),
                            mad(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE)))
 
 # Transform the data to a long format for ggplot
-delitos_long <- delitos_data %>%
+delitos_long <- delitos_data_Atl %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
   pivot_longer(cols = everything(), names_to = "Crime Type", values_to = "Value")
@@ -391,7 +388,7 @@ ggplot(delitos_long, aes(x = Value)) +
   )
 
 # Transform the data to long format and apply log transformation
-delitos_long_log <- delitos_data %>%
+delitos_long_log <- delitos_data_Atl %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
   mutate(across(everything(), ~ log(.x), .names = "{col}")) %>%  # Log transform (log(x + 1) to avoid log(0))
@@ -412,7 +409,7 @@ ggplot(delitos_long_log, aes(x = `Log Value`)) +
   )
 
 # Covariance Matrix (Log-Transformed)
-delitos_data %>%
+delitos_data_Atl %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
   mutate(across(everything(), ~ log(.x+1))) %>%  # Log-transform (+1 to handle zeros)
@@ -470,7 +467,7 @@ print(are_equal)
 #| warning: false
 
 # Covariance matrix 
-cm_delitos_data <- delitos_data %>%
+cm_delitos_data <- delitos_data_Atl %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
   select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
@@ -521,28 +518,73 @@ top_variable_names <- variable_names[top_indices]
 print(top_variable_names)
 
 # Fit a regression model to confirm the relationship
-model <- lm(sum_24HOM ~ sum_24HA + sum_24EX + sum_24HM + sum_24LP + sum_24HR + sum_24VI + sum_24HC + sum_24HP + sum_24DS, 
-            data = data.frame(delitos_data))
+model <- lm(sum_24HA ~ sum_24HOM+sum_24LP+sum_24VI+sum_24DS+sum_24HP+sum_24HR+sum_24HC+sum_24HM+sum_24SS+sum_24SE+sum_24EX+ sum_24TR,
+            data = data.frame(delitos_data_Atl))
+summary(model) # HA is related to DS HP HR HC HM EX
+vif(model)
 
-## AQUÍ TIENE QUE SER FRENTE A TOOOOODAS LAS VARIABLES, NO SOLO LAS DE LOS EIGEN VALUES MÁS BAJOS 
+model <- lm(sum_24HM ~  sum_24HOM+sum_24LP+sum_24VI+sum_24DS+sum_24HP+sum_24HR+sum_24HC+sum_24HA+sum_24SS+sum_24SE+sum_24EX+sum_24TR,
+            data = data.frame(delitos_data_Atl))
+summary(model) # HM is related to HOM LP VI HP HA EX 
+vif(model)
 
-# model <- lm(sum_24SE ~ sum_24DS + sum_24EX + sum_24SS + sum_24LP + 
-#               sum_24HOM + sum_24HR + sum_24VI + sum_24HM + 
-#               sum_24HA + sum_24HP + sum_24HC, 
-#             data = data.frame(delitos_data))
-# 
-# model <- lm(sum_24SS ~ sum_24EX + sum_24HC + sum_24HR + 
-#                   sum_24HA + sum_24DS + sum_24HM + 
-#                   sum_24HOM + sum_24HP + sum_24VI + sum_24LP,
-#                 data = data.frame(delitos_data))
-# 
-# model <- lm(sum_24HOM ~ sum_24HA + sum_24EX + sum_24HM +
-#               sum_24LP + sum_24HR + sum_24VI +
-#               sum_24HC + sum_24HP + sum_24DS,
-#             data = data.frame(delitos_data))
+model <- lm(sum_24HR ~ sum_24HOM+sum_24LP+sum_24VI+sum_24DS+sum_24HP+sum_24HC+sum_24HA+sum_24HM+sum_24SS+sum_24SE+sum_24EX+sum_24TR,
+            data = data.frame(delitos_data_Atl))
+summary(model) # HR relates to LP VI DS HP HA EX
+vif(model)
 
-summary(model)
+model <- lm(sum_24EX ~ sum_24HOM+sum_24LP+sum_24VI+sum_24DS+sum_24HP+sum_24HR+sum_24HC+sum_24HA+sum_24HM+sum_24SS+sum_24SE+sum_24TR,      data = data.frame(delitos_data_Atl))      
+summary(model) # Is highly corelated with all of them -- we should take this one out 
+vif(model)
 
+model <- lm(sum_24HC ~ sum_24HOM+sum_24LP+sum_24VI+sum_24DS+sum_24HP+sum_24HR+sum_24HA+sum_24HM+sum_24SS+sum_24SE+sum_24EX+ sum_24TR,
+            data = data.frame(delitos_data_Atl))
+summary(model) # Related to LP VIDS HP HA
+vif(model)
+
+model <- lm(sum_24DS ~ sum_24HOM+sum_24LP+sum_24VI+sum_24HP+sum_24HR+sum_24HC+sum_24HA+sum_24HM+sum_24SS+sum_24SE+sum_24EX+ sum_24TR,
+            data = data.frame(delitos_data_Atl))
+summary(model) # LP VI HP HR HC 
+vif(model)
+
+model <- lm(sum_24LP ~ sum_24HOM+sum_24VI+sum_24DS+sum_24HP+sum_24HR+sum_24HC+sum_24HA+sum_24HM+sum_24SS+sum_24SE+sum_24EX+ sum_24TR,
+            data = data.frame(delitos_data_Atl))   
+summary(model) # VI HOM DS HP HR HC EX
+vif(model)
+
+model <- lm(sum_24HOM ~ sum_24LP+sum_24VI+sum_24DS+sum_24HP+sum_24HR+sum_24HC+sum_24HA+sum_24HM+sum_24SS+sum_24SE+sum_24EX+ sum_24TR,
+            data = data.frame(delitos_data_Atl))  
+summary(model) # LP HP HM EX
+vif(model)
+
+model <- lm(sum_24HP ~ sum_24HOM+sum_24LP+sum_24VI+sum_24DS+sum_24HR+sum_24HC+sum_24HA+sum_24HM
+            #+sum_24SS
+            #+sum_24SE
+            +sum_24EX
+            #+sum_24TR,
+            , data = data.frame(delitos_data_Atl))
+summary(model) # Todas menos SS y SE
+vif(model)
+alias(model)
+
+model <- lm(sum_24VI ~ sum_24HOM+sum_24LP+sum_24DS+sum_24HP+sum_24HR+sum_24HC+sum_24HA+sum_24HM+sum_24SS+sum_24SE+sum_24EX+ sum_24TR,
+            data = data.frame(delitos_data_Atl))   
+summary(model) # LP DS HP HR HC HM EX
+vif(model)
+
+model <- lm(sum_24SE ~ sum_24HOM+sum_24LP+sum_24VI+sum_24DS+sum_24HP+sum_24HR+sum_24HC+sum_24HA+sum_24HM+sum_24SS+sum_24EX+ sum_24TR,
+            data = data.frame(delitos_data_Atl))
+summary(model) # P value showed that test wqas not statistically significant 
+vif(model)
+
+model <- lm(sum_24SS ~ sum_24HOM+sum_24LP+sum_24VI+sum_24DS+sum_24HP+sum_24HR+sum_24HC+sum_24HA+sum_24HM+sum_24SE+sum_24EX+ sum_24TR,
+            data = data.frame(delitos_data_Atl))  
+summary(model) # There is no data in this variable
+vif(model)
+
+model <- lm(sum_24TR ~ sum_24HOM+sum_24LP+sum_24VI+sum_24DS+sum_24HP+sum_24HR+sum_24HC+sum_24HA+sum_24HM+sum_24SS+sum_24SE+sum_24EX,
+            data = data.frame(delitos_data_Atl))
+summary(model) # There is no data in this variable
 # Variance Inflation Factors
 vif(model)
 
@@ -550,18 +592,18 @@ vif(model)
 ```
 
 Atlántico: 
-By the eigen values, we saw that they where not so small, meaning that variables cover a significant variability. Afterwards, by running the model, for HP we discovered that we had a several significant variables: HA, EX, HM, LP, and VI.And more importantly, we saw that we had residuals, therefore, the variable should not be excluded from the model. 
-From the VI factors, we could see that there is multicoliniality with EX, VI, HP and DS.  
+By the eigen values, we saw that they where not so small, meaning that variables cover a significant variability. Afterwards, by running the models, for HP we discovered that we had a several significant variables: HA, EX, HM, LP, and VI.And more importantly, we saw that we had residuals, therefore, the variable should not be excluded from the model. 
+From the VIF factors we discovered that we had to remove SS and TR from the model, thus they values were all 0 which caused errors. Even when SE was not causing trouble, we took it out from the model since was also 0. The Vif results show that there is not colianeality between variables. 
 
 ```{r}
 #| echo: true
 #| message: false
 #| warning: false
 
-cov_matrix <- delitos_data %>%
+cov_matrix <- delitos_data_Atl %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
-  #select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
+  select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
   cov() 
 
 # Effective Variance
@@ -576,24 +618,296 @@ det(cov_matrix)^(1/(ncol(cov_matrix) * 2))
 # Log-Transformed Effective Standard Deviation
 det(log(cov_matrix + 1))^(1/(ncol(cov_matrix) * 2))
 
-# Todo me dio cero - aquí estamos viendo la dispersión con respecto a la media. Lo que dicen estos resultados es que an Atlántico los delitos están muy cerca de la media, o sea que el crimen se
 ```
+Atlántico: 
 
+Values are close to cero, meaning that crime in Atlántico region are very close from the mean. 
 
 # Key Players and Topics
 
 # Non-Parametric Correlation {.unnumbered}
 
-Correlation measures the strength and direction of association between two variables. While Pearson's correlation requires a linear relationship and normally distributed data, \emph{Spearman's rank correlation} and \emph{Kendall's tau} are \emph{non-parametric} measures, making them ideal for analyzing data that may not be linear or normally distributed.
-
 ## Spearman's Rank Correlation
 
-Spearman's correlation coefficient $\rho$ is based on \emph{ranked} data. For two variables $X$ and $Y$, we replace each observation by its rank.
-
 ```{r}
-#| include: false
-source('setup.R')
+#| echo: true
+#| message: false
+#| warning: false
+
+delitos_data_Atl <- delitos_data %>% 
+  select(-sum_24TR, -sum_24SE, -sum_24SS)
+
+delitos_data_Atl %>%
+  st_drop_geometry() %>%
+  select(contains('24')) %>%
+  cor(., method = "spearman", use = "complete.obs") %>%
+  round(., 3) %>% 
+  print(.) %>%
+  corrplot(., method = "color", title = "Spearman Correlation", mar=c(0,0,1,0))
 ```
 
+Both Spearman's $\rho$ captures the \emph{monotonic} relationship between two variables. They are more robust to outliers and non-linear relationships than Pearson's correlation. In the context of areal data (e.g., crime rates, population density across polygons), these measures can reveal how variables co-vary without assuming linearity or normality.
+
+# Spatial Neighborhood Matrices {.unnumbered}
+
+## Neighbors Based on Contiguity
+
+
 ```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Create a spatial neighbors list using Queen contiguity
+# (i.e., polygons are considered neighbors if they share any point: edge or vertex)
+nb <- spdep::poly2nb(delitos_data, queen = TRUE)
+head(nb)
+
+# Replace invalid neighbor entries (i.e., [1] 0) with empty integer vectors
+# This ensures compatibility with functions that expect valid neighbor lists only
+nb_0 <- lapply(nb, function(x) if(length(x)==1 && x==0) integer(0) else x)
+
+# Polygons with neighbors
+table(sapply(nb_0, length))
+
+# Neighbors of Order k Based on Contiguity
+# Neighbors of second order
+nblags <- spdep::nblag(neighbours = nb, maxlag = 2)
+
+# Combine neighbors of all orders up to the specified lag (in this case, up to order 2)
+# This creates a cumulative neighbor list including first- and second-order neighbors
+nblagsc <- spdep::nblag_cumul(nblags)
+table(sapply(nblagsc, length))
+```
+Most polygons in the analysed departments have no neighbors under the queen contiguity method; thus, the DANE polygons are not usually contiguous, as they leave an empty space for streets.
+
+## Neighbors Based on k Nearest Neighbors
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Compute centroids of the polygons
+coo <- st_centroid(delitos_data)
+
+# Create a neighbor list where each polygon (based on its centroid `coo`) is connected 
+# to its 3 nearest neighbors using k-nearest neighbors (k = 3)
+nb <- knn2nb(knearneigh(coo, k = 3)) # k number nearest neighbors
+
+# Polygons with neighbors
+table(sapply(nb, length))
+
+# Subset data to the first 10 polygons
+delitos_data_10 <- delitos_data[1:100, ]
+
+# Recompute neighbor list for these 10 polygons to avoid index mismatches
+nb_10 <- knn2nb(knearneigh(st_centroid(delitos_data_10), k = 3))
+
+# Compute centroids for the 10 polygons
+coords_10 <- st_coordinates(st_centroid(delitos_data_10))
+
+# Plot the first 10 polygons and overlay neighbor connections in red
+plot(st_geometry(delitos_data_10), border = "lightgray", main = "First Polygons with 3 Nearest Neighbors")
+plot.nb(nb_10, coords_10, add = TRUE, col = "red", lwd = 2)
+```
+
+## Neighbors Based on Distance
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Create a neighbor list using distance-based contiguity:
+# Polygons are considered neighbors if their centroids are within 0.4 units (e.g., degrees) apart
+nb <- dnearneigh(x = st_centroid(delitos_data), d1 = 0, d2 = 0.4)
+
+# Polygons with neighbors
+hist(sapply(nb, length))
+
+# Subset data to the first 10 polygons
+delitos_data_10 <- delitos_data[1:100, ]
+
+# Recompute neighbor list for these 10 polygons to avoid index mismatches
+nb_10 <- dnearneigh(x = st_centroid(delitos_data_10), d1 = 0, d2 = 0.4)
+
+# Compute centroids for the 10 polygons
+coords_10 <- st_coordinates(st_centroid(delitos_data_10))
+
+# Plot the first 10 polygons and overlay neighbor connections in red
+plot(st_geometry(delitos_data_10), border = "lightgray", main = "First Polygons with 3 Nearest Neighbors")
+plot.nb(nb_10, coords_10, add = TRUE, col = "red", lwd = 2)
+```
+
+Determining an Appropriate Upper Distance Bound: To ensure that each area in a spatial dataset has at least (k) neighbors, we can determine an appropriate upper distance bound by first computing the (k) nearest neighbors for each area. For example, using the Queen contiguity method, one may use the \texttt{spdep::knearneigh()} function with (k=1) to obtain the nearest neighbor for each polygon. This yields a matrix of neighbor IDs, which is then converted into a neighbor list (of class \texttt{nb}) via \texttt{knn2nb()}. Next, the \texttt{spdep::nbdists()} function computes the distances along the links between each area and its neighbor. By summarizing these distances (e.g., using \texttt{summary(unlist(dist1))}), we can observe the range of distances.
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Compute k-nearest neighbors: for each polygon centroid, find its 1 nearest neighbor (k = 1)
+nb1 <- knn2nb(knearneigh(coo, k = 1))
+
+# Calculate the Euclidean distances between each polygon and its nearest neighbor
+dist1 <- nbdists(nb1, coo)
+
+# Summarize all distances to understand the minimum, maximum, and quartiles
+summary(unlist(dist1))
+
+# Create a distance-based neighbor list: polygons whose centroids are within [0, 1.2] units are considered neighbors
+nb <- dnearneigh(x = st_centroid(delitos_data), d1 = 0, d2 = 1.2)
+
+# Polygons with neighbors
+hist(sapply(nb, length))
+```
+
+## Neighborhood Matrices
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Spatial weights matrix using Queen contiguity (binary weights)
+# 'queen = TRUE' considers shared edges OR vertices as neighbors
+nb <- poly2nb(delitos_data, queen = TRUE)
+
+# Convert the neighbor list to a spatial weights list object
+# 'style = "W"' row-standardizes the weights (sums to 1)
+# 'zero.policy = TRUE' avoids errors when some polygons have no neighbors
+nbw <- spdep::nb2listw(nb, style = "W", zero.policy = TRUE)
+
+# Display the first 10 rows of spatial weights (for the first 10 polygons)
+nbw$weights[1:10]
+
+# Spatial weights matrix based on inverse distance values
+# Compute centroids of polygons
+coo <- st_centroid(delitos_data)
+
+# Use Queen contiguity again to define neighbors
+nb <- poly2nb(delitos_data, queen = TRUE)
+
+# Compute distances between neighbors based on their centroids
+dists <- nbdists(nb, coo)
+
+# Create inverse distance weights (1/distance) for each pair of neighbors
+ids <- lapply(dists, function(x){1/x})
+
+# Create a listw object using binary style ("B" = no standardization)
+nbw <- nb2listw(nb, glist = ids, style = "B", zero.policy = TRUE)
+
+# Display the first 10 inverse-distance-based weights
+nbw$weights[1:10]
+```
+
+# Spatial autocorrelation
+
+# Correspondance Analysis {.unnumbered}
+
+```{r}
+#| eval: false
+#| message: false
+#| warning: false
+#| include: false
+
+# Paso 1: Crear la matriz de frecuencias de delitos en polígonos
+Freq <- delitos_data %>%
+  st_drop_geometry() %>%
+  select(contains('24'))
+
+rownames(Freq) <- c("Zona Norte", "Zona Sur", "Zona Este", "Zona Oeste")
+colnames(Freq) <- c("Homicidio", "Robo", "Hurto", "Extorsión")
+
+print("Matriz de frecuencias:")
+print(F)
+
+# Paso 2: Calcular la tabla de frecuencias relativas
+total_F <- sum(F)
+F_rel <- F / total_F
+
+print("Matriz de frecuencias relativas:")
+print(F_rel)
+
+# Paso 3: Cálculo de los totales por fila y columna
+fi <- rowSums(F_rel)  # Suma por fila
+fj <- colSums(F_rel)  # Suma por columna
+
+D_f <- diag(fi)  # Matriz diagonal de totales de fila
+D_c <- diag(fj)  # Matriz diagonal de totales de columna
+
+# Paso 4: Construcción de la matriz de correspondencias Z
+D_f_sqrt_inv <- diag(1 / sqrt(fi))  # Raíz cuadrada inversa de los totales de fila
+D_c_sqrt_inv <- diag(1 / sqrt(fj))  # Raíz cuadrada inversa de los totales de columna
+
+Z <- D_f_sqrt_inv %*% (F_rel - fi %o% fj) %*% D_c_sqrt_inv
+
+print("Matriz de correspondencias Z:")
+print(Z)
+
+# Paso 5: Descomposición en Valores Singulares (SVD)
+svd_result <- svd(Z)  # Descomposición de Z
+
+U <- svd_result$u  # Vectores propios de ZZ' (Filas)
+D <- diag(svd_result$d)  # Matriz diagonal de valores singulares
+V <- svd_result$v  # Vectores propios de Z'Z (Columnas)
+
+print("Matriz U (Vectores propios de ZZ'):")
+print(U)
+
+print("Matriz D (Valores singulares):")
+print(D)
+
+print("Matriz V (Vectores propios de Z'Z):")
+print(V)
+
+# Paso 6: Proyección de filas y columnas en el espacio reducido
+dim_reducida <- 2
+C_f <- D_f_sqrt_inv %*% U[, 1:dim_reducida] %*% D[1:dim_reducida, 1:dim_reducida]  # Coordenadas filas
+C_c <- D_c_sqrt_inv %*% V[, 1:dim_reducida] %*% D[1:dim_reducida, 1:dim_reducida]  # Coordenadas columnas
+
+print("Coordenadas filas en el espacio reducido:")
+print(C_f)
+
+print("Coordenadas columnas en el espacio reducido:")
+print(C_c)
+
+# Librerías
+library(MASS)  # Para manipulación matricial
+library(ca)  # Para el análisis de correspondencias
+
+# Matriz de frecuencias (ejemplo: delitos en polígonos)
+F <- matrix(c(
+  12, 5, 8, 2,
+  7, 3, 10, 1,
+  4, 2, 6, 1,
+  15, 8, 14, 5
+), nrow = 4, byrow = TRUE)
+
+rownames(F) <- c("Zona Norte", "Zona Sur", "Zona Este", "Zona Oeste")
+colnames(F) <- c("Homicidio", "Robo", "Hurto", "Extorsión")
+
+# Total de la tabla
+n_total <- sum(F)
+
+# Matriz de frecuencias relativas
+F_rel <- F / n_total
+
+# Totales por fila y columna
+f_i <- rowSums(F_rel)
+f_j <- colSums(F_rel)
+
+# Matriz esperada bajo independencia
+F_exp <- outer(f_i, f_j)
+
+# Cálculo de ji-cuadrado
+chi2 <- sum((F_rel - F_exp)^2 / F_exp) * n_total
+print(paste("Estadístico Ji-cuadrado:", round(chi2, 4)))
+
+# Distancia ji-cuadrado entre filas
+D_c_inv <- diag(1 / f_j)  # Inversa de los totales de columnas
+dist_ji <- as.matrix((F_rel - F_exp) %*% D_c_inv %*% t(F_rel - F_exp))
+print("Matriz de distancias ji-cuadrado entre filas:")
+print(dist_ji)
 ```
