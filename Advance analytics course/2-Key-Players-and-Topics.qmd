@@ -339,7 +339,7 @@ Output of \textit{moran.test()}
 -   \textit{gmoran[["statistic"]]}: The z-score, which measures how far the observed Moran's I is from the expected value under the null hypothesis, in standard deviations.
 -   \textit{gmoran[["p.value"]]}: The p-value, which is the probability of observing a Moran's 
     
-I value as extreme as, or more extreme than, the one calculated, assuming the null hypothesis is true. A small p-value (typically less than 0.05) suggests that you can reject the null hypothesis and conclude that there is statistically significant spatial autocorrelation.
+`I` value as extreme as, or more extreme than, the one calculated, assuming the null hypothesis is true. A small p-value (typically less than 0.05) suggests that you can reject the null hypothesis and conclude that there is statistically significant spatial autocorrelation.
 
 ```{r}
 # Compute centroids of the polygons

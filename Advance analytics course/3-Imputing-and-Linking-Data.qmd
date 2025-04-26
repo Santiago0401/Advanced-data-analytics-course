@@ -74,9 +74,8 @@ colnames(points_df) <- c("x", "y")
 ggplot() +
   geom_raster(data = raster_df, aes(x = x, y = y, fill = tmin)) +
   scale_fill_viridis_c(name = "Min Temp (C)") +
-  geom_sf(data = delitos_data_df, color = "black", fill = "transparent") + # Plot the polygon borders
- #geom_point(data = points_df, aes(x = x, y = y), color = "red", size = 0.01, shape = 1, alpha = 0.5) + # Plot the centroids as transparent circles
+  geom_sf(data = delitos_data, color = "black", fill = "transparent") + # Plot the polygon borders
+ geom_point(data = points_df, aes(x = x, y = y), color = "red", size = 0.01, shape = 1, alpha = 0.5) + # Plot the centroids as transparent circles
   labs(title = "Aggregated Minimum Temperature with Polygons and Centroids") +
   theme_minimal()
 ```
-
