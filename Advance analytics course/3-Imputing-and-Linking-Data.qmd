@@ -3,5 +3,80 @@
 In summary, this book has no content whatsoever.
 
 ```{r}
-1 + 1
+#| include: false
+source('setup.R')
 ```
+
+## Download open spatial data
+
+```{r}
+#| echo: true
+#| message: true
+#| warning: true
+
+d <- worldclim_country(country = "Colombia", var = "tmin",
+                       path = tempdir())
+terra::plot(mean(d), plg = list(title = "Min. temperature (C)"))
+```
+
+## Cropping, masking, and aggregating raster data
+
+```{r}
+#| echo: true
+#| message: true
+#| warning: true
+
+# Cropping
+sextent <- terra::ext(delitos_data)
+d <- terra::crop(d, sextent)
+plot(d)
+```
+
+```{r}
+#| echo: true
+#| message: true
+#| warning: true
+
+# Masking
+d <- terra::mask(d, vect(delitos_data))
+plot(d)
+```
+
+```{r}
+#| echo: true
+#| message: true
+#| warning: true
+
+# Aggregating
+d <- terra::aggregate(d, fact = 20, fun = "mean", na.rm = TRUE)
+plot(d)
+```
+
+## Extracting raster values at points
+
+```{r}
+#| echo: true
+#| message: true
+#| warning: true
+
+points <- st_coordinates(delitos_data)
+
+# Convert SpatRaster to data frame for ggplot2
+raster_df <- as.data.frame(d, xy = TRUE)
+colnames(raster_df)[3] <- "tmin"  # Rename the temperature column
+
+# Get the centroid coordinates
+points_df <- st_coordinates(st_geometry(delitos_data))
+points_df <- as.data.frame(points_df)
+colnames(points_df) <- c("x", "y")
+
+# Create the plots with ggplot2
+ggplot() +
+  geom_raster(data = raster_df, aes(x = x, y = y, fill = tmin)) +
+  scale_fill_viridis_c(name = "Min Temp (C)") +
+  geom_sf(data = delitos_data_df, color = "black", fill = "transparent") + # Plot the polygon borders
+ #geom_point(data = points_df, aes(x = x, y = y), color = "red", size = 0.01, shape = 1, alpha = 0.5) + # Plot the centroids as transparent circles
+  labs(title = "Aggregated Minimum Temperature with Polygons and Centroids") +
+  theme_minimal()
+```
+
