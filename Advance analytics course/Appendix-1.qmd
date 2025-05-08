@@ -1,16 +1,42 @@
 # Appendix 1 {.appendix, .unnumbered}
 
-### Nathaly Páez
-### Andrés Cervantes 
-### Laura Duque 
+### Nathaly Paez \[05\]
 
-#### Maestría en Matemáticas Aplicadas y Ciencias de la Computación 
+### Andres Cervantes \[76\]
+
+### Laura Duque \[08\]
+
+#### Maestría en Matemáticas Aplicadas y Ciencias de la Computación
+
 #### Abril 2025
 
-##Data Analysis
+##Análisis del conjuto de datos
 
-For the assignment we selected three departments: Antioquia, Valle del Cauca and Atlántico; and ran the statistic analysis for each individually to compare and set strategies to reduce crime incidence. The selected problematic is robbery to people (HP). 
+For the assignment we selected three departments: Antioquia \[05\], Valle del Cauca \[76\] and Atlántico \[08\]; and ran the statistic analysis for each individually. From the data summary, for most crime variables, from the first to the third quantile values are 0, whereas the maximum value usually is a bigger number, which allows us to inquire that crime is focused in some polygons.
 
+We decided to focus on the problem of personal injury. The box plot and quantile analysis show that, like other crime data, homicides in Atlántico are concentrated in a few industrial areas, and 10% of these industrial areas accounted for all homicides in 2024.
+
+```{r}
+#PorAndrés Cervantes
+#------------------------------------------------
+# delitos_data$sum_24HP es un vector.
+# Tamaño del vector:
+largo <- length(delitos_data$sum_24HP)
+cat("Cantidad de columnas:", largo, "\n")
+#------------------------------------------------
+media <- mean(delitos_data$sum_24HP, na.rm = TRUE) # na.rm = TRUE para ignorar valores NA
+print(media)
+#------------------------------------------------
+#Descargar Dataset en Excel
+install.packages("openxlsx")
+library(openxlsx)
+# Suponiendo que 'delitos_data$sum_24HP' es un vector o parte de un data frame
+write.xlsx(data.frame(sum_24HP = delitos_data$sum_24HP), "delitos_data_sum_24HP.xlsx")
+#------------------------------------------------
+#Ruta de trabajo actual
+getwd()
+#------------------------------------------------
+```
 
 ```{r}
 #| echo: true
@@ -20,10 +46,7 @@ For the assignment we selected three departments: Antioquia, Valle del Cauca and
 #setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 # packages
-list_packages = c('readxl', 'dplyr', 'moments', 'tidyr', 'tibble', 'gt', 'ggplot2', 
-                  'fmsb', 'car', 'reshape2', 'knitr', 'gridExtra', 'ggExtra', 'sf', 
-                  'leaflet', 'igraph', 'ggraph', 'tidygraph', 'spdep', 'classInt', 
-                  'corrplot', 'spData', 'Matrix')
+list_packages = c('readxl', 'dplyr', 'moments', 'tidyr', 'tibble', 'gt', 'ggplot2', 'fmsb', 'car', 'reshape2', 'knitr', 'gridExtra', 'ggExtra', 'sf', 'leaflet', 'igraph', 'ggraph', 'tidygraph', 'spdep')
 new.packages = list_packages[!(list_packages %in% installed.packages()[,"Package"])]
 if (length(new.packages)) {
   install.packages(new.packages)
@@ -34,14 +57,10 @@ for (package in list_packages){
 
 # Load the dataset
 delitos_data <- st_read("data/spatial/crime_spatial_course.gpkg")
-delitos_data_Atl <- delitos_data[delitos_data$dpto_ccdgo == ('08'),] # Dataset with Atlántico Data 
-delitos_data <- delitos_data[delitos_data$dpto_ccdgo == c('08',"05","76" ), ] # dataset with data from analysed departments: 08 Atlántico 76  Valle del Cauca 05 Antioquia
+delitos_data <- delitos_data[delitos_data$dpto_ccdgo == c('08',"05","76" ), ] # 08 Atlántico 76  Valle del Cauca y 05 Antioquia
 
 dim(delitos_data)
 summary(delitos_data)
-
-dim(delitos_data_Atl)
-summary(delitos_data_Atl)
 
 # interactive polygons location
 leaflet(delitos_data) %>%
@@ -49,16 +68,13 @@ leaflet(delitos_data) %>%
   addPolygons(color = "steelblue", weight = 1, fillOpacity = 0.5)
 
 # quantile
-quantile(delitos_data_Atl$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE)
+quantile(delitos_data$sum_24HP, probs = seq(0, 1, 0.1), na.rm = TRUE)
 
 #boxplot
-boxplot(delitos_data_Atl$sum_24HP, main = "Boxplot of HP in Atlántico", horizontal = TRUE)
+boxplot(delitos_data$sum_24HP, main = "Boxplot of Homicides in Atlántico", horizontal = TRUE)
 
 
 ```
-Atléntico: 
-From the quantile and boxplot we can conclude that robbery data is higly concentrated. 
-
 
 ## Skewness
 
@@ -68,35 +84,53 @@ From the quantile and boxplot we can conclude that robbery data is higly concent
 #| warning: false
 
 # step by step
-n <- length(delitos_data_Atl$sum_24HP) 
-mean_x <- mean(delitos_data_Atl$sum_24HP)
-sd_x <- sd(delitos_data_Atl$sum_24HP)  # Uses (n-1) denominator
-z_scores <- (delitos_data_Atl$sum_24HP - mean_x) / sd_x
+n <- length(delitos_data$sum_24HP) 
+mean_x <- mean(delitos_data$sum_24HP)
+dato = mean_x <- mean(delitos_data$sum_24HP)
+sd_x <- sd(delitos_data$sum_24HP)  # Uses (n-1) denominator
+z_scores <- (delitos_data$sum_24HP - mean_x) / sd_x
 z_cubed <- z_scores^3
 sum_cubed <- sum(z_cubed)
 skewness <- (n / ((n - 1) * (n - 2))) * sum_cubed
 paste0('sum_24HP: ', skewness)
 
 # function
-skewness(delitos_data_Atl$sum_24HP, na.rm = TRUE)
+skewness(delitos_data$sum_24HP, na.rm = TRUE)
 
 # skewness
-delitos_data_Atl %>%
+delitos_data %>%
   st_drop_geometry() %>%
-  select(contains('24')) %>%
+  select(dpto_ccdgo, contains('24')) %>%
+  group_by(dpto_ccdgo) %>%
   summarise(across(everything(), ~ skewness(.x, na.rm = TRUE))) %>%
-  t() %>%
-  as.data.frame() %>%
-  tibble::rownames_to_column(var = "Crime Type") %>%
-  mutate(V1 = round(V1, 2)) %>%
-  rename(Skewness = V1) %>%
+  pivot_longer(
+    cols = -dpto_ccdgo,
+    names_to = "Crime Type",
+    values_to = "Skewness"
+  ) %>%
+  mutate(Skewness = round(Skewness, 2)) %>%
+  pivot_wider(
+    names_from = dpto_ccdgo,
+    values_from = Skewness
+  ) %>%
   gt()
 
 ```
 
 #### Analysis
-Robberies in Atlántico data have a skewness of 10.0324, this means that the distribution has a long tail to the right side. In other words, the distribution is very asymmetric around the mean. 
 
+Robberies in **Atlántico** data have a skewness of 10.0324, this means that the distribution has a long tail to the right side. In other words, the distribution is very asymmetric around the mean.
+
+------------------------------------------------------------------------
+
+Robberies in **Valle del Cauca** data have a skewness of 23.45458.\
+This is an extremely high value, implying that the data distribution is strongly skewed to the right. This high level of skewness indicates that there are many outliers (extreme values) at the top of the distribution. The shape of the distribution under these conditions would not be symmetrical. Instead, it would be "right-skewed," meaning that most of the data are clustered on the left side of the graph, with a long tail extending to the right.
+
+------------------------------------------------------------------------
+
+> paste0('sum_24HP: ', skewness) \[1\] "sum_24HP: 108.920265681" \> \> \# function \> skewness(delitos_data\$sum_24HP, na.rm = TRUE) \[1\] 108.917
+
+**Antioquia:** A skewness of 0 or close to 0 indicates a symmetric distribution. If it is greater than 1, the skew is to the right, and if it is negative, the skew is to the left. Consequently, in our data, the skewness value of 108.92 represents extreme asymmetry, providing further evidence of the inequality in the distribution of our data.
 
 ## Kurtosis
 
@@ -104,6 +138,7 @@ Robberies in Atlántico data have a skewness of 10.0324, this means that the dis
 #| echo: true
 #| message: false
 #| warning: false
+
 # step by step
 z_fourth <- z_scores^4
 sum_fourth <- sum(z_fourth)
@@ -111,24 +146,41 @@ kurtosis <- ((n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) * sum_fourth - (3 * 
 print(kurtosis)
 
 # function
-kurtosis(delitos_data_Atl$sum_24HP, na.rm = TRUE)
+kurtosis(delitos_data$sum_24HP, na.rm = TRUE)
 
-# Kurtosis
-delitos_data_Atl %>%
+# kurtosis
+delitos_data %>%
   st_drop_geometry() %>%
-  select(contains('24')) %>%
+  select(dpto_ccdgo, contains('24')) %>%
+  group_by(dpto_ccdgo) %>%
   summarise(across(everything(), ~ kurtosis(.x, na.rm = TRUE))) %>%
-  t() %>%
-  as.data.frame() %>%
-  tibble::rownames_to_column(var = "Crime Type") %>%
-  mutate(V1 = round(V1, 2)) %>%
-  rename(Kurtosis = V1) %>%
+  pivot_longer(
+    cols = -dpto_ccdgo,
+    names_to = "Crime Type",
+    values_to = "Kurtosis"
+  ) %>%
+  mutate(Kurtosis = round(Kurtosis, 2)) %>%
+  pivot_wider(
+    names_from = dpto_ccdgo,
+    values_from = Kurtosis
+  ) %>%
   gt()
 
 ```
 
-For Antlántico: 
-Data has a kurtosis of 206.24, this shows a leptokurtic distribution, with a heavy tail to the right.
+For **Atlántico:** Data has a kurtosis of 206.24, this shows a leptokurtic distribution, with a heavy tail to the right.
+
+------------------------------------------------------------------------
+
+For the case of **Valle del Cauca**: we have a kurtosis of 1053, indicates that the distribution not only has heavy tails, but also has a very sharp peak. This behavior is common in distributions where there are significant outliers. This will be a leptokurtic distribution as well.
+
+------------------------------------------------------------------------
+
+**Antioquia:** the kurtosis calculation yields a value of 17488.53, which is exceptionally high. This suggests a distribution with most values concentrated near the mean while also exhibiting a substantial number of extreme values (outliers). In other words, the distribution has heavy tails, making it highly leptokurtic.
+
+Image take from: <https://brandata.com.mx/2023/06/09/la-curtosis-que-es/>
+
+function \> kurtosis(delitos_data\$sum_24HP, na.rm = TRUE) \[1\] 17488.53
 
 ## Coefficient of Variation
 
@@ -138,9 +190,9 @@ Data has a kurtosis of 206.24, this shows a leptokurtic distribution, with a hea
 #| warning: false
 
 # Compute statistics
-mean_val <- mean(delitos_data_Atl$sum_24HP, na.rm = TRUE)
+mean_val <- mean(delitos_data$sum_24HP, na.rm = TRUE)
 print(mean_val)
-std_dev <- sd(delitos_data_Atl$sum_24HP, na.rm = TRUE)
+std_dev <- sd(delitos_data$sum_24HP, na.rm = TRUE)
 print(std_dev)
 
 # Compute the range for first standard deviation
@@ -149,12 +201,12 @@ upper_bound <- mean_val + std_dev
 paste0('lower_bound: ', round(lower_bound, 2), ' - upper_bound: ', round(upper_bound, 2))
 
 # Count the number of points within 1 standard deviation
-within_1sd <- sum(delitos_data_Atl$sum_24HP >= lower_bound & delitos_data_Atl$sum_24HP <= upper_bound, na.rm = TRUE)
-percentage_1sd <- (within_1sd / nrow(delitos_data_Atl)) * 100
+within_1sd <- sum(delitos_data$sum_24HP >= lower_bound & delitos_data$sum_24HP <= upper_bound, na.rm = TRUE)
+percentage_1sd <- (within_1sd / nrow(delitos_data)) * 100
 paste0('within_1sd: ', round(within_1sd, 2), ' - percentage_1sd: ', round(percentage_1sd, 2))
 
 # Create histogram
-ggplot(delitos_data_Atl, aes(x = sum_24HP)) +
+ggplot(delitos_data, aes(x = sum_24HP)) +
   geom_histogram(binwidth = 5, fill = "blue", alpha = 0.5, color = "black") +
   
   # Add vertical lines for mean, median, and 1st SD
@@ -178,7 +230,7 @@ ggplot(delitos_data_Atl, aes(x = sum_24HP)) +
 paste0('cv: ', round(std_dev / mean_val * 100), 2)
 
 # variation
-delitos_data_Atl %>%
+delitos_data %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
   summarise(
@@ -199,8 +251,25 @@ delitos_data_Atl %>%
 
 ```
 
-For Antlántico: 
-Data coefficient of variation of 3712 and variation of 3.71 indicate, as we have been confirming through the full analysis, that robbery data varies a lot relatively from its mean. But not as much as other crime variables do.  
+**For Atlántico:** Data coefficient of variation of 3712 and variation of 3.71 indicate, as we have been confirming through the full analysis, that data is varies a lot relatively from its mean. But not as much as other crime variables do.
+
+------------------------------------------------------------------------
+
+For the case of **Valle del Cauca**: this value (4392) indicates that the standard deviation is more than 43 times larger than the mean (0.2616484). Such a high CV suggests that the values ​​in your data set are extremely dispersed relative to the mean. A CV of 4.39 in sum_24HP (or 439%) also indicates that the variability of this data is high relative to its mean. However, this number, although significant, is considerably lower compared to the overall coefficient of variation. We are definitely facing a high dispersion in the data set.
+
+------------------------------------------------------------------------
+
+**Antioquia:** since the coefficient of variation (CV) is used to compare the variability of datasets with different units or widely differing means, and a lower CV indicates less variability relative to the mean, we observe that a CV of 10.262% suggests high variability.
+
+Regarding the mean, which is a measure of central tendency (meaning its calculated value represents the center of the dataset) a result of 0.398 suggests that most areas have few or no recorded events. This implies that the mean may be influenced by a few high values, making it an unreliable representation of the central tendency.
+
+Additionally, the standard deviation, which measures the dispersion of the data relative to the mean, is 4.084 in this case. This indicates that values can vary by approximately ±4.084 from the mean of 0.398, further confirming the high variability in the dataset.
+
+Finally, the ranges within the standard deviation variation (1SD) are calculated using the lower limit as the mean minus the standard deviation and the upper limit as the mean plus the standard deviation. The ranges within the 1SD variation, with a lower limit of -3.69 and an upper limit of 4.48, indicate that the events are highly skewed. This is because most values fall between 0 and 4 (with negative numbers being adjusted to 0). In this dataset, negative values are not possible. If negative values appear, it suggests that the data distribution is highly asymmetric.
+
+Prompt: What is the meaning of having percentages of values within 1SD of "within_1sd: 48877 - percentage_1sd: 98.52"? Explain in a concise paragraph both numbers.
+
+The result **"within_1sd: 48,877 - percentage_1sd: 98.52"** indicates that **48,877 observations (98.52% of the dataset)** fall within one standard deviation (±1SD) of the mean. In a **normally distributed dataset**, approximately **68%** of values should fall within this range. However, in this case, nearly **99% of the values** are concentrated within this narrow range, suggesting that the dataset is **highly skewed** with most values being very close to the mean and a few extreme outliers inflating the standard deviation. This confirms that **the standard deviation is not a reliable measure of spread for these data**, and alternative measures such as percentiles or transformations should be considered.
 
 ## Median Absolute Deviation MAD and MAD/median
 
@@ -210,10 +279,10 @@ Data coefficient of variation of 3712 and variation of 3.71 indicate, as we have
 #| warning: false
 
 # Compute statistics
-median_val <- median(delitos_data_Atl$sum_24HP, na.rm = TRUE)
+median_val <- median(delitos_data$sum_24HP, na.rm = TRUE)
 # Es normal que de cero porque es una medida de posición 
 print(median_val)
-mad_val <- mad(delitos_data_Atl$sum_24HP, na.rm = TRUE)  # Compute MAD
+mad_val <- mad(delitos_data$sum_24HP, na.rm = TRUE)  # Compute MAD
 print(mad_val)
 
 # Compute the range for first standard deviation
@@ -222,12 +291,12 @@ upper_bound <- median_val + mad_val
 paste0('lower_bound: ', round(lower_bound, 2), ' - upper_bound: ', round(upper_bound, 2))
 
 # Count the number of points within 1 MAD
-within_1mad <- sum(delitos_data_Atl$sum_24HP >= lower_bound & delitos_data_Atl$sum_24HP <= upper_bound, na.rm = TRUE)
-percentage_1mad <- (within_1mad / nrow(delitos_data_Atl)) * 100
+within_1mad <- sum(delitos_data$sum_24HP >= lower_bound & delitos_data$sum_24HP <= upper_bound, na.rm = TRUE)
+percentage_1mad <- (within_1mad / nrow(delitos_data)) * 100
 paste0('within_1mad: ', round(within_1mad, 2), ' - percentage_1mad: ', round(percentage_1mad, 2))
 
 # Create histogram
-ggplot(delitos_data_Atl, aes(x = sum_24HP)) +
+ggplot(delitos_data, aes(x = sum_24HP)) +
   geom_histogram(binwidth = 5, fill = "blue", alpha = 0.5, color = "black") +
   
   # Add vertical lines for mean, median, and 1st SD
@@ -252,8 +321,84 @@ paste0('MAD/Median: ', round(mad_val / median_val * 100), 2)
 
 ```
 
-Atlántico: 
-The Median Absolute Deviation (MAD) is a robust measure of variability that quantifies the dispersion of a dataset, in this case, as it is 88,41, indicates that  relative variability of robbery data is very high.
+**Atlántico:** The Median Absolute Deviation (MAD) is a robust measure of variability that quantifies the dispersion of a dataset, in this case, as it is 88,41, indicates that relative variability of robbery data is very high.
+
+------------------------------------------------------------------------
+
+**Valle del Cauca:** The formula to calculate the MAD of the data is as follows.
+
+Here we have a dataset of 45,328 values. They're distributed in 2 groups:
+
+Zero values = 38484.
+
+Non-zero values = 6844.
+
+1st: x = calculate the median for all dataset. R/ 0.
+
+2nd: y(array) = calculate absolute deviations. \[median - each dataset value\].
+
+3th: z = calculate the median of the absolute deviations. \[median (all absolute deviations obtained)\].
+
+So, MAD = \[z\] = 0 and MAD/median = \[(z / x)\*100\] then 0 as well. If you ask why multiply by 100, it is because we want to obtain a value as a percentage.
+
+A MAD of 0 indicates that there is no dispersion in the data around the median. In other words, all the values ​​in your data set are equal to the median (in this case, 0). There is no variance in the data, meaning there are no absolute deviations from the median.
+
+Equality to zero in both cases (MAD and median) indicates that there is a lack of variability in the data set and may be an indicator that all elements are homogeneous.
+
+------------------------------------------------------------------------
+
+**Antioquia:**
+
+```{r}
+> # Compute statistics
+> median_val <- median(delitos_data$sum_24HP, na.rm = TRUE)
+> print(median_val)
+[1] 0
+> mad_val <- mad(delitos_data$sum_24HP, na.rm = TRUE)  # Compute MAD
+> print(mad_val)
+[1] 0
+> 
+> # Compute the range for first standard deviation
+> lower_bound <- median_val - mad_val
+> upper_bound <- median_val + mad_val
+> paste0('lower_bound: ', round(lower_bound, 2), ' - upper_bound: ', round(upper_bound, 2))
+[1] "lower_bound: 0 - upper_bound: 0"
+> 
+> # Count the number of points within 1 MAD
+> within_1mad <- sum(delitos_data$sum_24HP >= lower_bound & delitos_data$sum_24HP <= upper_bound, na.rm = TRUE)
+> percentage_1mad <- (within_1mad / nrow(delitos_data)) * 100
+> paste0('within_1mad: ', round(within_1mad, 2), ' - percentage_1mad: ', round(percentage_1mad, 2))
+[1] "within_1mad: 42388 - percentage_1mad: 85.44"
+> 
+> # Create histogram
+> ggplot(delitos_data, aes(x = sum_24HP)) +
++   geom_histogram(binwidth = 5, fill = "blue", alpha = 0.5, color = "black") +
++   
++   # Add vertical lines for mean, median, and 1st SD
++   #geom_vline(aes(xintercept = mean_val), color = "red", linetype = "dashed", size = 1.2) +
++   geom_vline(aes(xintercept = median_val), color = "green", linetype = "dashed", size = 1.2) +
++   geom_vline(aes(xintercept = lower_bound), color = "purple", linetype = "dashed", size = 1) +
++   geom_vline(aes(xintercept = upper_bound), color = "purple", linetype = "dashed", size = 1) +
++   
++   # Labels and title
++   labs(title = "Histogram of AUTOMOTORES with Median, and 1MAD Range",
++        x = "AUTOMOTORES Values", y = "Frequency") +
++   
++   # Add annotation for 1SD range
++   annotate("text", x = median_val, y = 10, 
++            label = paste(within_1mad, "points (", round(percentage_1mad, 1), "1MAD", sep = ""), 
++            color = "black", size = 5, hjust = 0.5, vjust = -1) +
++   
++   theme_minimal()
+> 
+> # MAD/Median
+> paste0('MAD/Median: ', round(mad_val / median_val * 100), 2)
+[1] "MAD/Median: NaN2"
+```
+
+Prompt: What is the interpretation of these results? It is correct the interpretation that i have.
+
+In the case of **Antioquia** and the sum_24HP variable, when calculating the median and the Median Absolute Deviation (MAD), the results show that the dataset has an extremely high concentration of zero values, with little overall variability and only a few extreme values. The calculated median was 0, meaning that at least 50% of the observations reported no personal thefts during the analyzed year. Additionally, the MAD was also 0, confirming that the majority of values are exactly at the median, that is, zero. This finding aligns with the calculation of the ±1 MAD range, which only covers the value 0 and shows that 85.44% of the observations fall within this range. Thus, only 14.56% of the dataset corresponds to areas where personal thefts were actually recorded. When calculating the MAD/Median ratio, the result was undefined (NaN), because the median value is 0, highlighting that traditional dispersion metrics are ineffective in this context. In conclusion, in 85.44% of Antioquia, no personal thefts were recorded, indicating that thefts are concentrated in specific areas of the department. This highlights the need for intervention strategies and measures not only from law enforcement but also through active citizen participation. The state should implement prevention and control activities in collaboration with the community.
 
 ## Covariance Matrix
 
@@ -261,18 +406,87 @@ The Median Absolute Deviation (MAD) is a robust measure of variability that quan
 #| echo: true
 #| message: false
 #| warning: false
-delitos_data_Atl %>%
+delitos_data %>%
   st_drop_geometry() %>%
   select(contains("24")) %>%
   cov() %>%
   round(2) %>%
   knitr::kable(digits = 2, caption = "Covariance Matrix")
-
-
 ```
 
-Atlántico: 
-The covariance matrix shows that robbery to people is related to homicides, personal injuries, sexual abuse, and others. sum_24HP has a high variance (0.37), meaning its values fluctuate significantly. sum_24LP and sum_24VI have a covariance of 0.04, showing a moderate positive relationship. sum_24HP has higher covariances with other variables (0.05, 0.06), suggesting it tends to move in the same direction as these variables. Many values are close to zero, which means weak or no correlation between those variables.
+------------------------------------------------------------------------
+
+**Atlántico:** with the covariance matrix we can see that robbery to people is related to homicides, personal injuries, sexual abuse, and others. sum_24HP has a high variance (0.37), meaning its values fluctuate significantly. sum_24LP and sum_24VI have a covariance of 0.04, showing a moderate positive relationship. sum_24HP has higher covariances with other variables (0.05, 0.06), suggesting it tends to move in the same direction as these variables. Many values are close to zero, which means weak or no correlation between those variables.
+
+------------------------------------------------------------------------
+
+**Valle del Cauca**: this matrix is ​​constructed using data from the year 2024. Of all the crimes, the central variable is "sum_24HP", which, as we saw before, in this data set has a variance of 1.32 and a mean of 0.2616.
+
+**prompt:** let's talk about Covariance Matrix.
+
+Is this a multivariate calculation?
+
+Yes, it is used to describe the joint variability of a set of variables. Specifically, it measures how two variables change relative to each other.
+
+It contains the covariances between all combinations of a set of variables. Each element (C\_{ij}) of the matrix represents the covariance between variable (i) and variable (j).
+
+**Interpreting the Elements:**
+
+If (C\_{ij}) is positive, it indicates that when one of the variables increases, the other tends to increase as well.
+
+If (C\_{ij}) is negative, it indicates that when one of the variables increases, the other tends to decrease.
+
+If (C\_{ij}) is zero, it suggests that there is no linear relationship between the two variables.
+
+For us in this case is important to evaluate "sum_24HP" against others. Here we can see how strong is its covariance and how two variables change relative to each other.
+
+|                                    |      |
+|------------------------------------|------|
+| **Covariance Matrix for sum_24HP** |      |
+| **sum_24HP =\> Valle del Cauca**   |      |
+| sum_24HOM                          | 0.00 |
+| sum_24LP                           | 0.13 |
+| sum_24VI                           | 0.18 |
+| sum_24DS                           | 0.05 |
+| sum_24HP                           | 1.32 |
+| sum_24HR                           | 0.02 |
+| sum_24HC                           | 0.18 |
+| sum_24HA                           | 0.03 |
+| sum_24HM                           | 0.06 |
+| sum_24SS                           | 0.00 |
+| sum_24SE                           | 0.00 |
+| sum_24EX                           | 0.02 |
+| sum_24TR                           | 0.00 |
+
+------------------------------------------------------------------------
+
+**Antioquia:**
+
+| Variable          | Value |
+|-------------------|-------|
+| sum_24HP          |       |
+| sum_24HOM         | 0.01  |
+| sum_24LP          | 1.04  |
+| sum_24VI          | 3.07  |
+| sum_24DS          | 1.50  |
+| sum_24HP          | 16.68 |
+| sum_24HR          | 0.27  |
+| sum_24HC          | 0.58  |
+| sum_24HA          | 0.11  |
+| sum_24HM          | 0.70  |
+| sum_24SS          | 0.00  |
+| sum_24SE          | 0.00  |
+| sum_24EX          | 0.24  |
+| sum_24TR          | 0.00  |
+| sum_24HP_jittered | 16.68 |
+
+In the case of "Hurto a Personas" (sum_24HP), the variance is 16.68, indicating a high dispersion in its values. This can be confirmed by the fact that the mean is 0.3982, while the maximum value reaches 699, evidencing the presence of extreme or outlier values.
+
+Regarding covariance, the associations obtained are moderately positive, such as with sum_24VI (3.07), sum_24DS (1.50), sum_24LP (1.04), and sum_24HM (0.70), indicating that as sum_24HP increases, these variables tend to increase as well. It can also be observed that most of the other variables show weak or null relationships.
+
+Therefore, since sum_24HP and the aforementioned variables increase simultaneously, there is evidence of a positive covariance. There is no evidence that when sum_24HP increases, another variable decreases systematically. Thus, there is no negative covariance, even when some variables have values equal to zero, as there is no negativity or inversely proportional relationship observed.
+
+------------------------------------------------------------------------
 
 ## Covariance Matrix of Log-Transformed Data
 
@@ -282,7 +496,7 @@ The covariance matrix shows that robbery to people is related to homicides, pers
 #| warning: false
 
 # Define the dataset
-x <- delitos_data_Atl$sum_24HP
+x <- delitos_data$sum_24HP
 
 # 1. Compute Raw Arithmetic Mean
 arithmetic_mean <- mean(x)
@@ -327,8 +541,222 @@ ggMarginal(
 
 ```
 
-Atlántico: 
-In this case, as the data is very disperse, analyzing the log-transformed data could provide more accurate insights.
+**Atlántico:** In this case, as the data is very disperse, analyzing the log-transformed data could provide more accurate insights.
+
+------------------------------------------------------------------------
+
+**Valle del Cauca:**
+
+prompt #1:
+
+What is Covariance Matrix of Log-Transformed Data and what is its relationship with Covariance Matrix?
+
+#### **Log-Transformación**
+
+-   It's a technique that converts data by applying the logarithmic function. This can help stabilize variance and make the data follow a distribution closer to normal, especially if the original data are highly skewed or have a wide range of values.
+
+#### **Covariance Matrix of Log-Transformed Data**
+
+-   **Calculation**: to obtain the covariance matrix of log-transformed data, you first apply the logarithmic transformation to your data and then calculate the covariance matrix of the transformed data. This is done as follows:
+
+    1.  **Transform Data**: applies the logarithmic function (can be log base 10 or natural log, depending on the context) to each element of the data set.
+
+    2.  **Calculate the Covariance Matrix**: use the covariance formula mentioned above to calculate the matrix, but now using the log-transformed values.
+
+#### **Relatioship between Covariance Matrix and Covariance Matrix of Log-Transformed Data**
+
+-   The covariance matrix of the original data and that of the log-transformed data can differ significantly, especially if the original data are skewed. Log-transformation can make these relationships more evident or interpretable, especially in cases where the relationship between variables is nonlinear.
+
+-   The main difference is that the covariance matrix of log-transformed data reflects the relationships and variability of the data in a logarithmic space, which may be more suitable for statistical models that assume normality.
+
+prompt #2:
+
+Again, we're talking about the relationship between the covariance matrix and the covariance matrix of log-transformed data. It's not clear to me why applying a logarithm is convenient, what does it change? How does it benefit me? Can you create an example with fictitious data? Also, what is heteroskedasticity?
+
+#### Example with Fictitious Data
+
+```{r}
+# Crear datos de ejemplo
+set.seed(1)
+años <- 1:10
+# Ejemplo de ganancias (en miles de dólares)
+ganancias <- c(1, 2, 1.5, 3, 50, 100, 200, 400, 800, 2000) 
+# Generar una segunda variable, ingresos
+ingresos <- c(5, 10, 15, 20, 60, 110, 220, 400, 900, 2500)  # otra variable
+
+# Crear un marco de datos
+datos <- data.frame(años, ganancias, ingresos)
+
+# Visualizar los datos originales
+print(datos)
+
+# Calcular la matriz de covarianza original
+cov_original <- cov(datos[, c("ganancias", "ingresos")])
+print("Covarianza original:")
+print(cov_original)
+
+# Aplicar logaritmo a las ganancias y a los ingresos
+datos$log_ganancias <- log(datos$ganancias)
+datos$log_ingresos <- log(datos$ingresos)
+
+# Visualizar los datos transformados
+print(datos)
+
+# Calcular la matriz de covarianza log-transformada
+cov_log <- cov(datos[, c("log_ganancias", "log_ingresos")])
+print("Covarianza log-transformada:")
+print(cov_log)
+```
+
+We have a data set representing a company's earnings in thousands of dollars over several years:
+
+Analysis:
+
+Original Data: The earnings have a wide range (from 1 to 2000), which could be causing the variance to be inconsistent (heteroskedasticity). The covariance could make interpretation difficult due to these biases.
+
+Log-transformed Data: By applying the logarithm, we are compressing these values ​​to a more manageable range. The data will now be less skewed, and the variance will become more constant.
+
+| años | ganancias | ingresos |
+|-----:|----------:|---------:|
+|    1 |       1.0 |        5 |
+|    2 |       2.0 |       10 |
+|    3 |       1.5 |       15 |
+|    4 |       3.0 |       20 |
+|    5 |      50.0 |       60 |
+|    6 |     100.0 |      110 |
+|    7 |     200.0 |      220 |
+|    8 |     400.0 |      400 |
+|    9 |     800.0 |      900 |
+|   10 |    2000.0 |     2500 |
+
+```         
+[1] "Covarianza original:"           
+           ganancias    ingresos 
+ganancias  398548.4     492191.9 
+ingresos   492191.9     609676.7
+
+[1] "Covarianza log-transformada:"               
+               log_ganancias  log_ingresos 
+log_ganancias  8.121839       5.762011 
+log_ingresos   5.762011       4.244732
+```
+
+| años | ganancias | ingresos | log_ganancias | log_ingresos |
+|-----:|----------:|---------:|--------------:|-------------:|
+|    1 |       1.0 |        5 |     0.0000000 |     1.609438 |
+|    2 |       2.0 |       10 |     0.6931472 |     2.302585 |
+|    3 |       1.5 |       15 |     0.4054651 |     2.708050 |
+|    4 |       3.0 |       20 |     1.0986123 |     2.995732 |
+|    5 |      50.0 |       60 |     3.9120230 |     4.094345 |
+|    6 |     100.0 |      110 |     4.6051702 |     4.700480 |
+|    7 |     200.0 |      220 |     5.2983174 |     5.393628 |
+|    8 |     400.0 |      400 |     5.9914645 |     5.991465 |
+|    9 |     800.0 |      900 |     6.6846117 |     6.802395 |
+|   10 |    2000.0 |     2500 |     7.6009025 |     7.824046 |
+
+It is important to clarify that the natural logarithm has been used to make these transformations.
+
+#### Heteroscedasticity
+
+Refers to a condition in which the error variance of a regression model is not constant across all levels of the independent variable.
+
+### Benefits of Logarithmic Transformation and Heteroskedasticity Resolution
+
+By applying a logarithm:
+
+**We reduce the impact of extreme values:** Extremely high data values ​​have less influence.
+
+**We stabilize the variance:** Residuals become more consistent throughout the prediction.
+
+**We facilitate interpretation:** Relationships are often expressed in percentage terms, which can be more intuitive.
+
+The logarithmic transformation is a powerful tool in statistical and data analysis, especially when working with skewed data or in situations where variability is not constant (heteroskedasticity).
+
+#### Returning to results for Valle del Cauca
+
+The arithmetic mean of the data set is: 0.261648
+
+**First 6 logarithmic transformations (with +1 to avoid log(0)): \[1\] 0 0 0 0 0 0**
+
+This may indicate that many of the data in sum_24HP are zeros, which could be a reflection of the nature of your data set (for example, if sum_24HP corresponds to counts of events that do not occur regularly).
+
+**The log mean (multiplicative center) is: 0.134861**
+
+The calculated log mean is approximately (0.134861). This is a value in log space and suggests that, although most of the values ​​are zero, there are some higher values ​​influencing this mean.
+
+**The log mean converted back to the original scale is: 1.144378**
+
+The combined value (multiplicative center) converted back to the original scale is approximately (1.144378). This means that the typical (average) value of the data, when considering multiplicative variability, is about (1.144378).
+
+### General Conclusions
+
+Distribution and Validity of Results: The presence of many zeros in the data suggests that there may be a high concentration of data at the lower end (zero or near zero), which is correct when we look at the dataset. This can influence the interpretation of the arithmetic mean. The log mean may be more stable in such cases, as it handles extreme or skewed values ​​better.
+
+Use of the Log Transformation: The log transformation was appropriate in this case, as it avoided the problem of errors when calculating the log of zero and provided a measure that takes into account the variation in the data.
+
+|                                                      |      |
+|------------------------------------------------------|------|
+| **Covariance Matrix (Log-Transformed) for sum_24HP** |      |
+| sum_24HOM                                            | 0.00 |
+| sum_24LP                                             | 0.02 |
+| sum_24VI                                             | 0.02 |
+| sum_24DS                                             | 0.00 |
+| sum_24HP                                             | 0.12 |
+| sum_24HR                                             | 0.00 |
+| sum_24HC                                             | 0.01 |
+| sum_24HA                                             | 0.01 |
+| sum_24HM                                             | 0.01 |
+| sum_24SS                                             | 0.00 |
+| sum_24SE                                             | 0.00 |
+| sum_24EX                                             | 0.00 |
+| sum_24TR                                             | 0.00 |
+
+------------------------------------------------------------------------
+
+**Antioquia:**
+
+```{r}
+> # Define the dataset
+> x <- delitos_data$sum_24HP
+> 
+> # 1. Compute Raw Arithmetic Mean
+> arithmetic_mean <- mean(x)
+> print(arithmetic_mean)
+[1] 0.3981858
+> 
+> # 2. Compute Log-Mean (Multiplicative Center)
+> log_x <- log(x + 1)  # Take logarithm of values
+> head(log_x)
+[1] 0.0000000 2.1972246 0.0000000 0.0000000 0.0000000 0.6931472
+> log_mean <- mean(log_x)  # Compute mean in log-space
+> print(log_mean)
+[1] 0.148689
+> log_mean_exp <- exp(log_mean)  # Convert back to original scale
+> print(log_mean_exp)
+[1] 1.160312
+```
+
+| Variable          | Value |
+|-------------------|-------|
+| sum_24HP          |       |
+| sum_24HOM         | 0.00  |
+| sum_24LP          | 0.03  |
+| sum_24VI          | 0.04  |
+| sum_24DS          | 0.02  |
+| sum_24HP          | 0.17  |
+| sum_24HR          | 0.01  |
+| sum_24HC          | 0.03  |
+| sum_24HA          | 0.01  |
+| sum_24HM          | 0.03  |
+| sum_24SS          | 0.00  |
+| sum_24SE          | 0.00  |
+| sum_24EX          | 0.01  |
+| sum_24TR          | 0.00  |
+| sum_24HP_jittered | 0.17  |
+
+When a logarithmic transformation is applied to the data, the goal is to help reduce the asymmetry of the data, especially when dealing with very large values and a skewed distribution. Additionally, it converts multiplicative relationships into additive ones, which facilitates analysis in statistical models. In our case, it also helps to more easily manage and interpret the data due to variability across several orders of magnitude. Thus, by applying this logarithmic transformation, variance is stabilized, allowing patterns to be observed more clearly. First, we observe the original mean of 0.3981, indicating low values in the records of our target variable. In the logarithmic transformation, 1 is added to each value to avoid issues with zeros (log(x + 1)), resulting in a transformed mean of 0.1487. Subsequently, this mean is translated back to the original scale using an exponential function, since the transformed values are no longer in their natural scale and no longer represent the actual number of events or quantities, but rather their order of magnitude. Therefore, the inverse operation of the logarithm, the exponential function, must be applied, yielding 1.1603. This measure of central tendency is more robust as it is not influenced by extreme values.
+
+------------------------------------------------------------------------
 
 ```{r}
 #| include: false
@@ -343,11 +771,11 @@ original_values <- paste(head(comparison_table$Original_Value), collapse = ", ")
 
 #log transformed data
 # Compute statistics for raw and log-transformed data
-mean_raw <- mean(delitos_data_Atl$sum_24HP, na.rm = TRUE)
-sd_raw <- sd(delitos_data_Atl$sum_24HP, na.rm = TRUE)
-mad_raw <- mad(delitos_data_Atl$sum_24HP, na.rm = TRUE)
+mean_raw <- mean(delitos_data$sum_24HP, na.rm = TRUE)
+sd_raw <- sd(delitos_data$sum_24HP, na.rm = TRUE)
+mad_raw <- mad(delitos_data$sum_24HP, na.rm = TRUE)
 
-delitos_data_log <- delitos_data_Atl %>%
+delitos_data_log <- delitos_data %>%
   #mutate(LOG_AUTOMOTORES = log(AUTOMOTORES + 1))
   mutate(LOG_AUTOMOTORES = log1p(sum_24HP))  # log1p(x) = log(1 + x) to handle zeros
 
@@ -358,17 +786,17 @@ mad_log <- mad(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE)
 # Compute statistics for raw and log-transformed data
 data.frame(
   Measure = c("Mean", "Median", "Standard Deviation", "MAD"),
-  Raw_Data = c(mean(delitos_data_Atl$sum_24HP, na.rm = TRUE),
-               median(delitos_data_Atl$sum_24HP, na.rm = TRUE),
-               sd(delitos_data_Atl$sum_24HP, na.rm = TRUE),
-               mad(delitos_data_Atl$sum_24HP, na.rm = TRUE)),
+  Raw_Data = c(mean(delitos_data$sum_24HP, na.rm = TRUE),
+               median(delitos_data$sum_24HP, na.rm = TRUE),
+               sd(delitos_data$sum_24HP, na.rm = TRUE),
+               mad(delitos_data$sum_24HP, na.rm = TRUE)),
   Log_Transformed_Data = c(mean(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE),
                            median(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE),
                            sd(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE),
                            mad(delitos_data_log$LOG_AUTOMOTORES, na.rm = TRUE)))
 
 # Transform the data to a long format for ggplot
-delitos_long <- delitos_data_Atl %>%
+delitos_long <- delitos_data %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
   pivot_longer(cols = everything(), names_to = "Crime Type", values_to = "Value")
@@ -388,7 +816,7 @@ ggplot(delitos_long, aes(x = Value)) +
   )
 
 # Transform the data to long format and apply log transformation
-delitos_long_log <- delitos_data_Atl %>%
+delitos_long_log <- delitos_data %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
   mutate(across(everything(), ~ log(.x), .names = "{col}")) %>%  # Log transform (log(x + 1) to avoid log(0))
@@ -409,7 +837,7 @@ ggplot(delitos_long_log, aes(x = `Log Value`)) +
   )
 
 # Covariance Matrix (Log-Transformed)
-delitos_data_Atl %>%
+delitos_data %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
   mutate(across(everything(), ~ log(.x+1))) %>%  # Log-transform (+1 to handle zeros)
@@ -419,8 +847,7 @@ delitos_data_Atl %>%
 
 ```
 
-Atlántico: 
-Log transformation is often used to reduce skewness and normalize data when the original variables have a wide range of values. The weaker covariances in the log-transformed matrix suggest that some of the relationships observed in the original matrix were driven by differences in scale rather than true correlation.
+**Atlántico:** Log transformation is often used to reduce skewness and normalize data when the original variables have a wide range of values. The weaker covariances in the log-transformed matrix suggest that some of the relationships observed in the original matrix were driven by differences in scale rather than true correlation.
 
 ## Redundant Variables
 
@@ -460,6 +887,571 @@ are_equal <- all.equal(res, res2)
 print("Are A * eigenvectors and eigenvectors * eigenvalues equal?")
 print(are_equal)
 ```
+
+------------------------------------------------------------------------
+
+**Valle del Cauca:**
+
+This example has permitted to understand a variety of concepts related with eigenvalues and eigenvectors, how to calculate it and its importance within redundant variables discovering process.
+
+Being a 2x2 matrix, it will have two eigenvalues. Each eigenvalue has a corresponding eigenvector associated with it. So since the matrix will have two eigenvalues, it will also have two eigenvectors, with 2 values ​​for each vector.
+
+Our table A has next values:
+
+\[X\] \[Y\]
+
+\[1\] 4 2
+
+\[2\] 2 3
+
+The layout of a matrix is ​​defined as the sum of the elements on the main diagonal. In this case, 4 + 3 = 7
+
+We're gonna define temporarily one value called Lambda "λ" and this will be our first eigenvalue.
+
+For instance our **λ** will be = 1
+
+Now we have to make a new matrix called: Matrix ( A - \lambda I )
+
+This new matrix gonna has these values:
+
+\[X\] \[Y\]
+
+\[1\] Matrix A \[X1\] - λ Matrix A \[X2\]
+
+\[2\] Matrix A \[Y1\] Matrix A \[Y2\] - λ
+
+Now calculate the determinant of the matrix ( A - \lambda \* I )
+
+Our matrix ( A - \lambda \* I )
+
+\[X\] \[Y\]
+
+\[1\] 3 2
+
+\[2\] 1 2
+
+At this point the determinant of the matrix ( A - \lambda \* I ) has a value of -2.
+
+determinant formula of the matrix ( A - \lambda \* I ) is:
+
+\[matrix ( A - \lambda \* I )\]\[X1\] - λ \*
+
+(\[matrix ( A - \lambda \* I )\]\[Y2\] - λ) -
+
+\[matrix ( A - \lambda \* I )\]\[Y1\] \* \[matrix ( A - \lambda \* I )\]\[X2\]
+
+In other words: (3-1)\*(2-1)-(2\*2) = -2
+
+But we have an issue! We need to obtain a Lambda value such that this determinant is 0.
+
+Use solver to find the lambda value that makes the determinant 0.
+
+**λ** **= 0.719223608649294**
+
+This λ value is our first eigenvalue.
+
+Before to discover its eigenvector we're gonna know how to get the correct matrix: (A - \lambda\*I), applying **λ** **= 0.719223608649294.**
+
+(I): This is the identity matrix of the same size as (A matrix).
+
+Our matrix ( I )
+
+\[X\] \[Y\]
+
+\[1\] 1 0
+
+\[2\] 0 1
+
+The identity matrix (I) is a square matrix in which all elements on the main diagonal are 1 and all other elements are 0. For a (2 \times 2) matrix, it is: \[ I = \] This matrix is ​​important because, when multiplied by any number, the result is simply scaling the identity matrix, keeping the same shape.
+
+When we multiply the identity matrix (I) by a scalar (in this case, the eigenvalue (\lambda)), each element of the identity matrix is ​​multiplied by (\lambda). This results in: \[ \lambda I = \lambda \cdot \]
+
+Our matrix (lambda\*I)
+
+\[X\] \[Y\]
+
+\[1\] 0.719223608649294 0
+
+\[2\] 0 0.719223608649294
+
+What Does It Mean in the Context of (A - \lambda I)?
+
+Matrix Transformation: The term (\lambda I) affects the matrix (A) by reducing the values ​​on the diagonal, where (\lambda) is subtracted from each of the elements on the main diagonal of (A).
+
+Purpose of the Operation: The equation (A - \lambda I) is key to finding the eigenvalues ​​of the matrix (A). This calculation is based on the concept that, to find the eigenvectors associated with the eigenvalues, you need to solve the equation:
+
+\[(A - \\lambda I) \\cdot X = 0\]
+
+By subtracting (\lambda\* I), you adjust the matrix (A) so that when you multiply it by a vector (X) (finding the eigenvector), the result is the zero vector. This indicates that (X) will not be altered, maintaining its direction under the transformation defined by (A).
+
+In short, (\lambda\* I) transforms the matrix (A) such that by solving the equation ((A - \lambda\*I) \cdot X = 0), the eigenvectors associated with the eigenvalues ​​of the matrix can be identified. This is a fundamental step in the calculation of these components in linear algebra.
+
+Next step: Matrix **(A - \\lambda I)**
+
+\[X\] \[Y\] \[P\] \[Q\]
+
+\[1\] 4 2 - 0.719223608649294 0
+
+\[2\] 2 3 0 0.719223608649294
+
+Matrix **(A - \\lambda I)**
+
+(X1-P1) X2 = (4 - 0.719223608649294) 2 = 3.280776391 2
+
+Y1 (Y2-Q2) 2 (3-0.719223608649294) 2 2.280776391
+
+As a consequence of having obtained this new matrix **(A - \\lambda I)** :
+
+\[X\] \[Y\]
+
+\[1\] 3.280776391 2
+
+\[2\] 2 2.280776391
+
+Having done these calculations, we have simultaneously found the determinant of the matrix. In this case, the value of the determinant was 0.
+
+We need to obtain a Lambda value such that this determinant is 0.
+
+Above we said that we need to obtain a Lambda value such that this determinant is 0 and with λ = 0.719223608649294 we have achieved it.
+
+**But what is the determinant?**
+
+The determinant of a matrix is ​​a scalar value that can be calculated from the matrix's elements.
+
+Outside of the statistical context that I have been developing, for the case of a 2X2 square matrix, the determinant is calculated as follows:
+
+Our table A has had next values:
+
+\[X\] \[Y\]
+
+\[1\] 4 2 = a b
+
+\[2\] 2 3 c d
+
+\[\\text{Det}(A) = ad - bc\] =\> (4\*3)-(2\*2) = 12-4 = 8
+
+For higher dimensional matrices ((3 \times 3) or more), the calculation of the determinant becomes more complex and a method such as cofactor expansion or Sarrus rule for (3 \times 3) matrices is used.
+
+The determinant provides important information about some properties of the matrix, such as:
+
+a\) **Invertibility**: If the determinant of a matrix is ​​zero, the matrix is ​​considered singular and has no inverse. This has important implications in linear algebra and in the solution of systems of linear equations.
+
+If the determinant is nonzero, the matrix is ​​invertible, and its inverse can be calculated, which is critical for various calculations, including those involving eigenvectors.
+
+b\) **Scalability**: The determinant changes predictably under matrix operations.
+
+° If you scale a row of a matrix by a factor (k), the determinant also scales by (k).
+
+° If you swap two rows, the determinant changes sign.
+
+° If you add a multiple of one row to another row, the determinant does not change.
+
+c: **Geometric Interpretation:**
+
+° In the case of (2 x 2) matrices, the determinant can be interpreted as the area of ​​the parallelogram formed by the vectors in the rows or columns of the matrix.
+
+° In (3 x 3) matrices, it can be interpreted as the volume of the parallelepiped formed by the vectors.
+
+Now, the way in which the determinant of the matrix ((A - \lambda\*I)) is calculated follows a similar process to the calculation of the determinant of a (2 \times 2) matrix, but an additional value ((\lambda)) is introduced that complicates the expression.
+
+When we calculate the determinant of ((A - \lambda\*I)), we have to consider how (\lambda\*I) affects the elements of (A).
+
+**1. Estructura de (A - \\lambda\*I)**, **known as the characteristic matrix or eigenvalue matrix**
+
+The identity matrix (I) has (1) on the diagonal and (0) in the other positions, so:The identity matrix (I) has (1) on the diagonal and (0) in the other positions, so:
+
+\[X\] \[Y\]
+
+\[1\] 0.719223608649294 0
+
+\[2\] 0 0.719223608649294
+
+Then the matrix ((A - \lambda I)) becomes:
+
+\[X\] \[Y\]
+
+\[1\] 3.28077639 2 = a b
+
+\[2\] 2 2.28077639 c d
+
+**2. Cálculo del Determinante**:
+
+Now, to calculate the determinant of this new matrix, we apply the same determinant rule (2 \times 2):
+
+(\\text{Det}(A - \\lambda I) = (a - \\lambda)\*(d - \\lambda) - (b \\cdot c))
+
+Expanding this, you get a polynomial in terms of (\lambda):
+
+(\\text{Det}(A - \\lambda I) = ad - a\\lambda - d\\lambda + \\lambda\^2 - bc)
+
+Which simplifies to:
+
+(\\text{Det}(A - \\lambda I) = \\lambda\^2 - (a + d)\\lambda + (ad - bc))
+
+Then:
+
+\[X\] \[Y\]
+
+\[1\] 3.280776391 2
+
+\[2\] 2 2.280776391
+
+Det(A - \\lambda I) = ((0.719223608649294)\^2) - ((3.280776391 + 2.280776391) \* (0.719223608649294)) + ((3.280776391 \* 2.280776391) - (2\*2))
+
+Det(A - \\lambda I) = -0.0000001241, **that's it 0**
+
+**Summary of the Difference between determinant of (A) and (A-(** **λ\*I))**
+
+**Characteristic Polynomial:** The determinant of ((A - \lambda I)) is a polynomial in (\lambda), which allows us to *find the eigenvalues* ​​by solving the characteristic equation by equating that polynomial to zero. **Incorporating (**\lambda\*\*):\*\* The presence of (\lambda) in the matrix affects how we calculate the determinant and produces a second-degree polynomial in the case of (2 \times 2) matrices.
+
+**Relationship between Determinants and Eigenvectors**
+
+° The characteristic polynomial, obtained by calculating the determinant of ( (A - \lambda I) ), is used to find the eigenvalues ​​of (A).
+
+The characteristic polynomial of a square matrix is ​​a polynomial obtained by calculating the determinant of the matrix ( (A - \lambda I) ), where:
+
+\(A\) is the original matrix.
+
+(\lambda) is a scalar (the eigenvalue we are looking for.
+
+\(I\) is the identity matrix of the same dimension as (A).
+
+The determinant is used in the construction of the characteristic polynomial. To find the eigenvalues ​​of a matrix, you need to solve the characteristic polynomial equation:
+
+{Det}(A - \lambda I) = 0
+
+The result of this determinant is a polynomial in terms of (\lambda). The roots of this polynomial (the values ​​of (\lambda)) are the eigenvalues ​​of the matrix (A).
+
+° By calculating the determinant, you can understand the structure of the matrix and determine properties that are essential for analyzing its eigenvalues ​​and eigenvectors.
+
+**Integrating concepts**
+
+By defining the characteristic polynomial equation \[ \text{Det}(A - \lambda I) = 0 \] in terms of a lambda, I am looking for the result to be 0. If I find a lambda, such that the result of the characteristic polynomial equation is 0, then that value 0, is the determinant of the characteristic matrix (A - \lambda\*I) and the value of lambda, becomes the first eigenvalue.
+
+Now we're gonna **find its iegenvector** through this next formula:
+
+***\[(A - \\lambda\*I) \\cdot\*X = 0\]***
+
+Breakdown of the Equation
+
+(A): This is the original matrix from which you are calculating the eigenvalues ​​and eigenvectors. (\lambda): This is the eigenvalue.
+
+(I): This is the identity matrix of the same size as (A).
+
+(X): This is the eigenvector we are looking for.
+
+**Steps to Find the Eigenvector**
+
+Matrix A = (4 22 3)
+
+First eigenvalue: \[**λ =** 0.719223608649294\]
+
+**Step 1:** Build the Matrix (A - **λ**I)
+
+\[X\] \[Y\]
+
+\[1\] 3.280776391350706 2
+
+\[2\] 2 2.280776391350706
+
+**Step 2:** The equation you want to solve is:
+
+\[(A - **λ**I) \* X = 0\]
+
+This translates to a system of linear equations, where (X) is the eigenvector we are looking for. Let us denote the eigenvector as:
+
+\[X = (x1 x2)\]
+
+**Step 3:** Establish the System of Equations
+
+This leads you to the two equations from the matrix (A - \lambda I):
+
+For the first row:
+
+\[3.280776391350706 \* x1 + 2 \* x2 = 0\] =\> (1)
+
+For the second row:
+
+\[2 \* x1 + 2.280776391350706 \* x2 = 0\] =\> (2)
+
+**Step 4:** Solve the System of Equations
+
+From the first equation (1):
+
+$$
+[
+2 \cdot x_2 = -3.280776391350706 \cdot x_1 \quad \Rightarrow \quad x_2 = -\frac{3.280776391350706}{2} \cdot x_1
+]
+$$
+
+Substituting in the second equation:
+
+$$
+[
+2 \cdot x_1 + 2.280776391350706 \cdot \left(-\frac{3.280776391350706}{2} \cdot x_1\right) = 0
+]
+$$
+
+Simplify:
+
+$$
+[2 \cdot x_1 - 3.280776391350706 \cdot x_1 = 0]
+$$$$
+[x_1 \cdot (2 - 3.280776391350706) = 0]
+$$
+
+**Step 5:** Choose a Value of (x_1)
+
+We can select any value for (x_1) (usually (1)) and then calculate (x_2).
+
+Here, we may have one or both components of the result other than 0. To consider the values ​​x_1 and x_2 to be the eigenvector of the eigenvalue lambda_1, they must be 0. Now, an important clarification needs to be made here.
+
+The values ​​x_1 and x_2 that satisfy an eigenvector must necessarily generate components with the value 0.00?
+
+Isn't it sufficient that both calculated components are very close to 0.00?
+
+In the context of linear algebra and eigenvector calculus, when the equation is verified:
+
+\[(A - **λ**I) \* X = 0\]
+
+The result must be exactly the zero vector. However, in practice, approximation criteria are used due to the limits of numerical precision in computations, especially when working with software and numerical calculations.
+
+**Details of the Approximation Criterion**
+
+1.  *Exact Zero Vector:*
+
+Theoretically, an eigenvector (X) must satisfy the requirement that the product ((A - \lambda I) \cdot X) equals exactly (0 0).
+
+This tells us that the vector (X) is a solution to the system of equations derived from the relation.
+
+2.  *Approximations in Calculations:*
+
+In practice, when performing calculations, especially in software (such as R, Python, MATLAB, etc.), it is common for the result to not be exactly zero due to:
+
+**Numerical errors:** Inaccurate calculations due to rounding or precision of floating-point numbers. **Statistical noise:** In real-world data analysis, there may be variations in the data that introduce slight errors.
+
+3.  *Criterio de Tolerancia:*
+
+If the result is close to zero (for example, less than a specific threshold like (0.001) or (0.0001)), you can consider that the vector meets the condition to be an eigenvector.
+
+This approach is used because in computations in R, Python, or MATLAB, numerical representations may not be exact, even though the model behavior may be correct.
+
+**Recapitulating the Steps to Find the Eigenvector**
+
+Trying to find values ​​for x_1 and x_2 that satisfy the requirement that the result of each equation or component be 0 can be very laborious to do by hand. Therefore, to speed up the process, I used a Microsoft Excel tool.
+
+In the ribbon =\> Data, section =\> Forecast, we go to =\> Hypothesis analysis and finally =\> Goal seek...
+
+Using this tool will give us a value x_1 that seeks to approximate the result of component 1 to 0. But since the result of the function of component 1 directly intervenes in the result of component 2 because of exist a dependency relationship, we must also apply the "Excel goal search" process, to find the value of x_2. This process must be iterated several times until Excel indicates that it has reached the highest degree of precision, that is, as close to 0 as possible.
+
+$$
+[(A - \lambda I) \cdot \begin{pmatrix}x_1 \\x_2\end{pmatrix} = 0]
+$$
+
+$$
+[A - \lambda I = \begin{pmatrix}4 - \lambda & 2 \\2 & 3 - \lambda\end{pmatrix}]
+$$
+
+$$
+[\begin{pmatrix}x_1 \\x_2\end{pmatrix} = \begin{pmatrix}-0.001033832 \\0.001314788\end{pmatrix}]
+$$
+
+For the first row:
+
+\[3.280776391350706 \* -0.001033832 + 2 \* 0.001314788 = 0\] =\> (**-0.000762196**)
+
+For the second row:
+
+\[2 \* -0.001033832 + 2.280776391350706 \* 0.001314788 = 0\] =\> (**0.000931073**)
+
+In my case, I managed to find x_1: -0.00103383179577251 and x_2: 0.00131478761475097. In this way I obtained component_1: -0.000762196 and component_2: 0.000931073.
+
+Now I check if the components are within the tolerance range used for this type of calculations: \[-0.001, 0.001\]
+
+*First component:* (-0.000762708) is within tolerance (\[-0.001, 0.001\]).
+
+*Second component:* (0.000932849) is also within tolerance (\[-0.001, 0.001\]).
+
+Since both components are within the specified tolerance range, we can consider that the vector
+
+(X = -0.001033832 0.001314788) is effectively an eigenvector associated with the eigenvalue (\lambda\_1 = 0.719223608649294).
+
+**Search for the second eigenvalue**
+
+Mencione que el segundo valor propio se obtiene restando la suma de la trayectoria de la matriz A - Lambda_1.
+
+La trayectoria de una matriz se define como la suma de los elementos de la diagonal principal. En este caso, 4 + 3 = 7.
+
+So:
+
+7 - 0.719223608649294 = 6.280776391 =\> **Lambda_2**
+
+Now the task remains to apply all the same procedures seen to find the eigenvector for lambda_2.
+
+**Additional resources used in the development of this research:**
+
+<https://latexeditor.lagrida.com/>
+
+Microsoft Excel
+
+**Conclusions on the calculation of eigenvalues ​​and eigenvectors in a 2X2 matrix**
+
+1.  Eigenvalues ​​and Redundant Variables
+
+*Characteristic Polynomial:* By calculating the characteristic polynomial of a matrix, you are examining the algebraic structure of the relationships between the variables. The eigenvalues ​​you obtain are indicative of how the variables interact.
+
+An eigenvalue with a magnitude very close to zero (or actually zero) generally indicates a linear combination of variables that contributes no new information to the data set. This suggests that the variable or combination of variables is redundant.
+
+2.  Linear Dependence
+
+*Null Space:* Eigenvectors corresponding to eigenvalues ​​that are zero indicate that there are linear dependencies between variables. If you can express a variable as a combination of other variables, this means you have redundancy in your dataset.
+
+*Collinearity:* The fact that a variable can be represented by other variables indicates that it has a collinear relationship, which can complicate regression models and make the coefficients unstable.
+
+3.  Principal Component Analysis (PCA)
+
+In the context of data analysis, eigenvalues ​​are used in PCA to identify directions of maximum variance in the data.
+
+Directions (principal components) with eigenvalues ​​close to zero can be viewed as feature components that do not add significant value to the data set, suggesting that you can drop one or more of the original variables to maintain a simpler and more effective model.
+
+4.  Dimensionality Reduction
+
+*Model Simplification:* By identifying and eliminating redundant variables (through eigenvalue analysis), you can reduce the dimensionality of the model without losing critical information. This can facilitate interpretation and improve the accuracy of predictive models.
+
+**Conclusions applied to matrix A**
+
+The first eigenvalue or lambda_1 is: 0.719223608649294
+
+The second eigenvalue or lambda_2 is: 6.280776391
+
+Lambda_1 indicates that there is a linear combination of the variables that does not contribute new information to the data set.
+
+**Eigenvalue (**\lambda\*\*\_1):\*\*
+
+The eigenvalue (\lambda\_1 = 0.719223608649294) suggests that it is a significant eigenvalue; however, compared to (\lambda\_2), which is larger, it may indicate that the direction associated with (\lambda\_1) is less important or that there is a linear combination of the variables that does not contribute significantly to the total variance of the data set.
+
+**Meaning of (**\lambda\*\*\_1):\*\*
+
+When you find a small eigenvalue (close to zero), it typically indicates collinearity or linear dependence between the variables. In other words, at least one variable may not be contributing unique information to the model, as it can be represented or explained by a combination of the other variables.
+
+**Interpretation of Eigenvalues**
+
+*Linear Dependencies and Contributions:*
+
+A small eigenvalue (such as (\lambda\_1)) generally indicates that the direction associated with this value does not explain a large portion of the total variance in the data set.
+
+A small eigenvalue (closer to zero) suggests that the variables in the matrix are, in some sense, "trapped" in a linear relationship, and one or more variables do not contribute significant additional information.
+
+*Collinearity:*
+
+In the case of your matrix (A), if we observe that (\lambda\_1 = 0.719223608649294) is relatively small compared to (\lambda\_2), this indicates that the direction associated with the smaller eigenvalue (in vector space) does not add value to the same extent as the direction associated with the larger eigenvalue.
+
+This may indicate that there may be some linear dependence between the variables that form that direction; it is indicative of collinearity.
+
+**What is the variable in question? / Which variable or variables are redundant?**
+
+In practical terms, if for example, one of the eigenvectors associated with (\lambda\_1) suggests that a component (such as a combination of variables (X) and (Y) in your matrix) contributes very little to the variance, then that might be the component that is redundant or not significant.
+
+**Evaluate variables in this context**
+
+***Correlation Analysis:*** You can calculate the correlation matrix to see how variables relate to each other. It will allow you to see which variables are highly correlated and could be offsetting the impact between them.
+
+***PCA:*** By performing principal components analysis (PCA), you can identify which components account for the majority of the variance and which ones can be discarded. It will help identify how many dimensions are necessary to explain the variability of the data and if there are components that explain little variance, suggesting redundancies.
+
+The eigenvalue (\lambda\_1 = 0.719223608649294) is the key in this case to identifying the direction that might be generating the least impact on the total variance; the eigenvector associated with this value may correspond to a combination of your variables that doesn't contribute significantly. This suggests that, when analyzing the variables in your data set, you might consider further examining those related to this eigenvalue.
+
+Finally the relationships between eigenvalues ​​and eigenvectors, and the way they are analyzed, are key to understanding redundancy in data. Performing these calculations not only helps identify which variables are contributing significantly to the model, but also helps reduce the risk of multicollinearity and improve the accuracy of any analysis performed.
+
+------------------------------------------------------------------------
+
+### Redundant Variables Detection
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Covariance matrix 
+cm_delitos_data <- delitos_data %>%
+  st_drop_geometry() %>%
+  select(contains('24')) %>%
+  select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
+  cov()
+
+# Compute eigenvalues and eigenvectors
+eigen_results <- cm_delitos_data %>% eigen()
+
+# Extract eigenvalues and eigenvectors
+eigenvalues <- eigen_results$values
+eigenvectors <- eigen_results$vectors
+
+# Display eigenvalues and eigenvectors
+print(eigenvalues)
+head(eigenvectors)
+
+# The Smallest Eigenvalues
+sort(eigenvalues, decreasing = FALSE)
+
+# The smallest eigenvalue is approximately zero
+smallest_eigenvalue <- min(eigenvalues)
+print(smallest_eigenvalue)
+
+# Corresponding eigenvector
+smallest_eigenvector <- eigenvectors[, which.min(eigenvalues)]
+print(smallest_eigenvector)
+
+# Normalize the eigenvector by dividing by the largest absolute value
+normalized_eigenvector <- smallest_eigenvector / max(abs(smallest_eigenvector))
+print(normalized_eigenvector)
+
+# Sorted normalize the eigenvector
+sort(abs(normalized_eigenvector), decreasing = T)
+
+# Get numeric variable names (order matches eigenvector indices)
+variable_names <- colnames(cm_delitos_data)
+
+# Sort normalized eigenvector by absolute contribution (descending order)
+sorted_contributions <- sort(abs(normalized_eigenvector), decreasing = TRUE)
+
+# Get the indices of the top contributions
+top_indices <- order(abs(normalized_eigenvector), decreasing = TRUE)
+
+# Get the names of the top variables
+top_variable_names <- variable_names[top_indices]
+
+# Print the top variable names
+print(top_variable_names)
+
+# Fit a regression model to confirm the relationship
+model <- lm(sum_24HP ~ sum_24HA + sum_24EX + sum_24HM + sum_24LP + sum_24HR + sum_24VI + sum_24HC + sum_24HOM + sum_24DS, 
+            data = data.frame(delitos_data))
+
+## AQUÍ TIENE QUE SER FRENTE A TOOOOODAS LAS VARIABLES, NO SOLO LAS DE LOS EIGEN VALUES MÁS BAJOS 
+
+# model <- lm(sum_24SE ~ sum_24DS + sum_24EX + sum_24SS + sum_24LP + 
+#               sum_24HOM + sum_24HR + sum_24VI + sum_24HM + 
+#               sum_24HA + sum_24HP + sum_24HC, 
+#             data = data.frame(delitos_data))
+# 
+# model <- lm(sum_24SS ~ sum_24EX + sum_24HC + sum_24HR + 
+#                   sum_24HA + sum_24DS + sum_24HM + 
+#                   sum_24HOM + sum_24HP + sum_24VI + sum_24LP,
+#                 data = data.frame(delitos_data))
+# 
+# model <- lm(sum_24HOM ~ sum_24HA + sum_24EX + sum_24HM +
+#               sum_24LP + sum_24HR + sum_24VI +
+#               sum_24HC + sum_24HP + sum_24DS,
+#             data = data.frame(delitos_data))
+
+summary(model)
+
+# Variance Inflation Factors
+vif(model)
+
+
+```
+
+**Atlántico:** By the eigen values, we saw that they where not so small, meaning that variables cover a significant variability. Afterwards, by running the model, for HP we discovered that we had a several significant variables: HA, EX, HM, LP, and VI.And more importantly, we saw that we had residuals, therefore, the variable should not be excluded from the model. From the VI factors, we could see that there is multicoliniality with EX, VI, HP and DS.
 
 ```{r}
 #| echo: true
@@ -587,23 +1579,246 @@ model <- lm(sum_24TR ~ sum_24HOM+sum_24LP+sum_24VI+sum_24DS+sum_24HP+sum_24HR+su
 summary(model) # There is no data in this variable
 # Variance Inflation Factors
 vif(model)
+```
 
+------------------------------------------------------------------------
+
+**Valle del Cauca**
+
+prompt:
+
+What is: Redundant Variables?
+
+They refer to those variables that do not provide substantial new information because their content is already represented by other variables in the data set.
+
+Collinearity: It occurs when two or more variables are highly correlated. For example, if you have both height variables in centimeters and meters, one is simply a conversion of the other.
+
+Duplication: Often, a variable can be a direct copy or a simple transformation of another variable in the data set. This increases dimensionality without adding analytical value.
+
+For instance: If you are evaluating the weight of people in a data set and you have both kilograms and pounds, one variable is redundant.
+
+Conclusion: As we have seen, the p-values ​​\[Pr(\>\|t\|)\] from the linear regression show a result of "2.00E-16", that is, 0.15 zeros and 2.
+
+```{r}
+# Call:
+# lm(formula = sum_24HP ~ sum_24HA + sum_24EX + sum_24HM + sum_24LP + 
+#    sum_24HR + sum_24VI + sum_24HC + sum_24HOM + sum_24DS, data = data.frame(delitos_data))
+
+# Residuals:
+#    Min      1Q  Median      3Q     Max 
+# -19.311  -0.096  -0.096  -0.096  74.195 
+
+# Coefficients:
+#             Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)  0.096096   0.004753  20.219   <2e-16 ***
+# sum_24HA     0.757449   0.031607  23.965   <2e-16 ***
+# sum_24EX     0.302932   0.032309   9.376   <2e-16 ***
+# sum_24HM     0.648806   0.019827  32.723   <2e-16 ***
+# sum_24LP     0.280697   0.009801  28.639   <2e-16 ***
+# sum_24HR     0.302510   0.026909  11.242   <2e-16 ***
+# sum_24VI     0.212884   0.007793  27.317   <2e-16 ***
+# sum_24HC     1.431535   0.013855 103.320   <2e-16 ***
+# sum_24HOM   -0.034799   0.029218  -1.191    0.234    
+# sum_24DS     0.209750   0.016907  12.406   <2e-16 ***
+```
+
+This means that with the exception of the independent variable "sum_24HOM", all p-values ​​(0.0000000000000002) are less than the significance level defined for alpha, commonly: (\\alpha = 0.05) or (\\alpha = 0.01). Therefore, the Null Hypothesis (H_0) is rejected, which suggests that there is sufficient evidence to assume that (X) has an effect on (Y).
+
+By rejecting the null hypothesis, you accept the alternative hypothesis ((H_a)), which suggests that the coefficient is not zero and that the independent variable does have an effect on (Y). Or what would be the same, "sum_24HOM" is the only one that does not have a statistically significant relationship or effect on (Y).
+
+In my coefficient table or model summary, I have, on the one hand, the intercept (denoted as (B_0)) with an estimated value of (0.096096). This intercept represents the value of the dependent variable ((sum\_{24HP})) when all of the independent variables ((sum\_{24HA}), (sum\_{24EX}), (sum\_{24HM}), (sum\_{24LP}), (sum\_{24HR}), (sum\_{24VI}), (sum\_{24HC}), (sum\_{24HOM}), and (sum\_{24DS})) are equal to zero.
+
+On the other hand, for the remaining independent variables, each estimated coefficient ((B_i)) indicates the effect of that variable on (sum\_{24HP}), that is, the expected amount of change in the dependent variable for each unit of change in the respective independent variable, holding all other variables constant.
+
+The estimated coefficient for each independent variable represents the slope associated with that specific variable in the regression relationship. Therefore, for each unit change in the independent variable (B_i), the value of (sum\_{24HP}) adjusts by that coefficient, but the intercept ((B_0)) remains constant and does not change as a result of changes in (B_i).
+
+------------------------------------------------------------------------
+
+**Antioquia:**
+
+```{r}
+> #| echo: true
+> #| message: false
+> #| warning: false
+> 
+> # Define the matrix A
+> matrix_a <- matrix(c(4, 2,
++                      2, 3), nrow = 2, byrow = TRUE)
+> print("Matrix A:")
+[1] "Matrix A:"
+> print(matrix_a)
+     [,1] [,2]
+[1,]    4    2
+[2,]    2    3
+> 
+> # Compute the eigen decomposition using R's built-in eigen() function
+> eigen_builtin <- eigen(matrix_a)
+> print("Built-in eigen() values:")
+[1] "Built-in eigen() values:"
+> print(eigen_builtin$values)
+[1] 5.561553 1.438447
+> print("Built-in eigen() vectors:")
+[1] "Built-in eigen() vectors:"
+> print(eigen_builtin$vectors)
+           [,1]       [,2]
+[1,] -0.7882054  0.6154122
+[2,] -0.6154122 -0.7882054
+> 
+> # Multiply A by the matrix of eigenvectors:
+> # Each column of eigen_builtin$vectors is an eigenvector.
+> res <- matrix_a %*% eigen_builtin$vectors
+> print("A * eigenvectors:")
+[1] "A * eigenvectors:"
+> print(res)
+          [,1]      [,2]
+[1,] -4.383646  0.885238
+[2,] -3.422648 -1.133792
+> 
+> # Multiply the eigenvector matrix by the diagonal matrix of eigenvalues.
+> res2 <- eigen_builtin$vectors %*% diag(eigen_builtin$values)
+> print("eigenvectors * eigenvalues:")
+[1] "eigenvectors * eigenvalues:"
+> print(res2)
+          [,1]      [,2]
+[1,] -4.383646  0.885238
+[2,] -3.422648 -1.133792
+> 
+> # Check if these two matrices are equal (they should be equal within numerical precision)
+> are_equal <- all.equal(res, res2)
+> print("Are A * eigenvectors and eigenvectors * eigenvalues equal?")
+[1] "Are A * eigenvectors and eigenvectors * eigenvalues equal?"
+> print(are_equal)
+[1] TRUE
 
 ```
 
-Atlántico: 
-By the eigen values, we saw that they where not so small, meaning that variables cover a significant variability. Afterwards, by running the models, for HP we discovered that we had a several significant variables: HA, EX, HM, LP, and VI.And more importantly, we saw that we had residuals, therefore, the variable should not be excluded from the model. 
-From the VIF factors we discovered that we had to remove SS and TR from the model, thus they values were all 0 which caused errors. Even when SE was not causing trouble, we took it out from the model since was also 0. The Vif results show that there is not colianeality between variables. 
+The purpose of identifying redundant variables lies in the fact that, if some variables are too highly correlated with each other, they do not add unique value to the model—in other words, they convey the same information without contributing anything new. Collinearity and redundancy analysis, such as the calculation of the Variance Inflation Factor (VIF) and matrix decompositions, help determine which variables can be removed, combined, or reconsidered depending on the case. If a VIF is greater than 5 or 10, it indicates that the variable is redundant. Thus, we can either eliminate it or combine the redundant variables. In our case, we first define the matrix and then compute its eigenvalue and eigenvector decomposition. This is done to analyze the structure of the data and determine if there are dominant directions in which the data varies. The eigenvalues indicate how much variance there is in each direction, while the eigenvectors represent those directions. This is what the code performs when it displays the eigenvectors associated with the directions of the principal components. Subsequently, the eigenvector matrix is multiplied by the diagonal matrix of eigenvalues and the result is compared with the original matrix multiplication. This step verifies that the decomposition was correctly executed, as we should be able to reconstruct the original matrix by multiplying the eigenvectors by the eigenvalues. Since the results match, our code returns TRUE, indicating that the reconstruction falls within the expected numerical precision.
+
+```{r}
+> # Covariance matrix 
+> cm_delitos_data <- delitos_data %>%
++   st_drop_geometry() %>%
++   select(contains('24')) %>%
++   select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
++   cov()
+> 
+> # Compute eigenvalues and eigenvectors
+> eigen_results <- cm_delitos_data %>% eigen()
+> 
+> # Extract eigenvalues and eigenvectors
+> eigenvalues <- eigen_results$values
+> eigenvectors <- eigen_results$vectors
+> 
+> # Display eigenvalues and eigenvectors
+> print(eigenvalues)
+ [1] 3.421238e+01 1.102423e+00 6.022575e-01 2.688128e-01 1.992059e-01 1.096003e-01 6.262624e-02 3.352671e-02 2.274917e-02 1.283346e-02 1.663699e-09
+> head(eigenvectors)
+
+              [,1]         [,2]        [,3]          [,4]         [,5]         [,6]         [,7]          [,8]         [,9]         [,10]         [,11]
+[1,] -0.0002850347 -0.003814636  0.00547336  0.0023751081  0.006437169  0.005979588  0.002574381 -0.0124375358 -0.014401943  0.9997518893 -1.766881e-06
+[2,] -0.0450514476 -0.382627929  0.85252514  0.3480402019  0.001863753  0.042576943 -0.029845633  0.0288154775 -0.007082956 -0.0069003203  1.900093e-07
+[3,] -0.1326148510 -0.811484977 -0.46670515  0.2077350024  0.141832947  0.204600911  0.018366396  0.0241935422  0.005371170 -0.0028784322  1.367619e-07
+[4,] -0.0642657666 -0.259483210 -0.03340744 -0.1222250956 -0.131777902 -0.920047063 -0.209124403  0.0666349263 -0.020263374  0.0068917945 -3.550221e-07
+[5,] -0.6980120220  0.109345061  0.01144490  0.0001823953 -0.017389212  0.018482521  0.006733416  0.0009756473  0.001256351  0.0001681847 -7.071068e-01
+[6,] -0.0119116657 -0.130486635  0.07916625 -0.2429346471 -0.070994318 -0.135809201  0.945205910  0.0211979129 -0.014027997 -0.0014604415 -1.817439e-07
+
+```
+
+The covariance matrix is computed, followed by the extraction of the eigenvalues and eigenvectors of that matrix. This allows for the identification of the main directions of variation in the data, thereby reducing dimensionality and improving our understanding of the relationships between variables.
+
+```{r}
+# The Smallest Eigenvalues
+> sort(eigenvalues, decreasing = FALSE)
+ [1] 1.663699e-09 1.283346e-02 2.274917e-02 3.352671e-02 6.262624e-02 1.096003e-01 1.992059e-01 2.688128e-01 6.022575e-01 1.102423e+00 3.421238e+01
+> 
+> # The smallest eigenvalue is approximately zero
+> smallest_eigenvalue <- min(eigenvalues)
+> print(smallest_eigenvalue)
+[1] 1.663699e-09
+> 
+> # Corresponding eigenvector
+> smallest_eigenvector <- eigenvectors[, which.min(eigenvalues)]
+> print(smallest_eigenvector)
+ [1] -1.766881e-06  1.900093e-07  1.367619e-07 -3.550221e-07 -7.071068e-01 -1.817439e-07  6.351868e-07 -4.829610e-07 -3.318839e-07 -4.038181e-09
+[11]  7.071068e-01
+> 
+> # Normalize the eigenvector by dividing by the largest absolute value
+> normalized_eigenvector <- smallest_eigenvector / max(abs(smallest_eigenvector))
+> print(normalized_eigenvector)
+ [1] -2.498746e-06  2.687137e-07  1.934106e-07 -5.020771e-07 -9.999999e-01 -2.570247e-07  8.982898e-07 -6.830099e-07 -4.693547e-07 -5.710850e-09
+[11]  1.000000e+00
+> 
+> # Sorted normalize the eigenvector
+> sort(abs(normalized_eigenvector), decreasing = T)
+ [1] 1.000000e+00 9.999999e-01 2.498746e-06 8.982898e-07 6.830099e-07 5.020771e-07 4.693547e-07 2.687137e-07 2.570247e-07 1.934106e-07 5.710850e-09
+> 
+> # Print the top variable names
+> print(top_variable_names)
+ [1] "sum_24HP_jittered" "sum_24HP"          "sum_24HOM"         "sum_24HC"          "sum_24HA"          "sum_24DS"          "sum_24HM"         
+ [8] "sum_24LP"          "sum_24HR"          "sum_24VI"          "sum_24EX"         
+> 
+> # Fit a regression model to confirm the relationship
+> model <- lm(sum_24HP ~ sum_24HOM + sum_24LP + sum_24VI + 
++               sum_24DS + sum_24TR + sum_24HR + 
++               sum_24HC + sum_24HA + sum_24HM + 
++               sum_24SS + sum_24SE + sum_24EX, 
++             data = data.frame(delitos_data))
+> 
+> summary(model)
+
+Call:
+lm(formula = sum_24HP ~ sum_24HOM + sum_24LP + sum_24VI + sum_24DS + 
+    sum_24TR + sum_24HR + sum_24HC + sum_24HA + sum_24HM + sum_24SS + 
+    sum_24SE + sum_24EX, data = data.frame(delitos_data))
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-133.93    0.07    0.07    0.07  341.66 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept) -0.06806    0.01341  -5.074 3.91e-07 ***
+sum_24HOM   -0.20036    0.11324  -1.769   0.0768 .  
+sum_24LP     0.26727    0.01739  15.371  < 2e-16 ***
+sum_24VI     0.99877    0.01570  63.599  < 2e-16 ***
+sum_24DS     3.09383    0.03530  87.650  < 2e-16 ***
+sum_24TR    -0.63678    0.63795  -0.998   0.3182    
+sum_24HR    -1.19328    0.04884 -24.430  < 2e-16 ***
+sum_24HC     1.56289    0.02756  56.705  < 2e-16 ***
+sum_24HA     1.00818    0.08415  11.981  < 2e-16 ***
+sum_24HM    -0.34385    0.02778 -12.380  < 2e-16 ***
+sum_24SS     0.53403    1.42554   0.375   0.7079    
+sum_24SE    -0.18066    1.28174  -0.141   0.8879    
+sum_24EX     0.52600    0.07034   7.478 7.65e-14 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 2.851 on 49597 degrees of freedom
+Multiple R-squared:  0.5129,	Adjusted R-squared:  0.5128 
+F-statistic:  4351 on 12 and 49597 DF,  p-value: < 2.2e-16
+
+> 
+> # Variance Inflation Factors
+> vif(model)
+sum_24HOM  sum_24LP  sum_24VI  sum_24DS  sum_24TR  sum_24HR  sum_24HC  sum_24HA  sum_24HM  sum_24SS  sum_24SE  sum_24EX 
+ 1.008571  1.294182  2.226205  2.428329  1.000976  1.488974  1.068851  1.058041  1.656399  1.000002  1.010461  1.206129
+```
+
+When calculating the smallest eigenvalues, we obtain a result of 1.663699e-09, which is a value very close to zero. This indicates that there is a direction in the variable space where there is almost no variation, meaning there is high redundancy or multicollinearity. Then, we obtain the eigenvector corresponding to the smallest eigenvalue, which represents a linear combination of variables that explains the lack of variation. Additionally, the eigenvector is normalized to facilitate the comparison of the variables with the greatest weight in the redundancy linear combination; this also ensures that the largest element has a value of 1, with the others scaled proportionally. The normalized eigenvector is then organized from highest to lowest, to identify the variables with the greatest weight in the collinearity direction and thus determine which variables are most responsible for the redundancy (sum_24HP, sum_24HOM, sum_24LP, sum_24HR, sum_24VT, sum_24DS, sum_24HM, and sum_24HC). A linear regression model is performed to confirm the relationship, taking sum_24HP as the dependent variable and the identified predictors as independent variables. As a result (adjusted R² = 0.5128, p-value \< 2.2e-16), a significant relationship is confirmed between sum_24HP and sum_24LP, sum_24VI, sum_24DS, sum_24HR, sum_24HC, sum_24HA, and sum_24EX, whose coefficients were statistically significant (p \< 0.001). Finally, the variance inflation factor (VIF) analysis shows that all variables are below the threshold of 5, with sum_24DS having the highest VIF at 2.43, this indicates that there is no multicollinearity, as a moderate level would require crossing the threshold.
+
+------------------------------------------------------------------------
+
+## Global Variability Metric
 
 ```{r}
 #| echo: true
 #| message: false
 #| warning: false
 
-cov_matrix <- delitos_data_Atl %>%
+cov_matrix <- delitos_data %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
-  select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
+  #select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
   cov() 
 
 # Effective Variance
@@ -617,27 +1832,331 @@ det(cov_matrix)^(1/(ncol(cov_matrix) * 2))
 
 # Log-Transformed Effective Standard Deviation
 det(log(cov_matrix + 1))^(1/(ncol(cov_matrix) * 2))
+```
+
+**Atlántico:**
+
+::: {#id1 style="color: red; background-color: white;"}
+Todo me dio cero - aquí estamos viendo la dispersión con respecto a la media. Lo que dicen estos resultados es que an Atlántico los delitos están muy cerca de la media, o sea que el crimen se...
+:::
+
+------------------------------------------------------------------------
+
+**Valle del Cauca:**
+
+```{r}
+Resúmen Estadístico delitos_data$sum_24HP
+Medida	Valor
+Media	0.26164840
+Mediana	0.00000000
+Moda	0.00000000
+Varianza	1.32068850
+Desviación Estándar	1.14921210
+1er Cuartil	0.00000000
+2do Cuartil (Mediana)	0.00000000
+3er Cuartil	0.00000000
+```
+
+Media: 0.26164840
+
+```{r}
+Covariance Matrix
+
+sum_24HOM	sum_24LP	sum_24VI	sum_24DS	sum_24HP	sum_24HR	sum_24HC	sum_24HA	sum_24HM	sum_24SS	sum_24SE	sum_24EX	sum_24TR
+sum_24HOM	0.02	0.01	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0	0	0.00	0
+sum_24LP	0.01	0.23	0.09	0.02	0.13	0.01	0.01	0.00	0.02	0	0	0.01	0
+sum_24VI	0.00	0.09	0.40	0.05	0.18	0.01	0.02	0.01	0.02	0	0	0.02	0
+sum_24DS	0.00	0.02	0.05	0.08	0.05	0.00	0.01	0.00	0.00	0	0	0.01	0
+sum_24HP	0.00	0.13	0.18	0.05	1.32	0.02	0.18	0.03	0.06	0	0	0.02	0
+sum_24HR	0.00	0.01	0.01	0.00	0.02	0.03	0.00	0.00	0.00	0	0	0.00	0
+sum_24HC	0.00	0.01	0.02	0.01	0.18	0.00	0.11	0.01	0.01	0	0	0.01	0
+sum_24HA	0.00	0.00	0.01	0.00	0.03	0.00	0.01	0.02	0.00	0	0	0.00	0
+sum_24HM	0.00	0.02	0.02	0.00	0.06	0.00	0.01	0.00	0.05	0	0	0.00	0
+sum_24SS	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0	0	0.00	0
+sum_24SE	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0	0	0.00	0
+sum_24EX	0.00	0.01	0.02	0.01	0.02	0.00	0.01	0.00	0.00	0	0	0.02	0
+sum_24TR	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0	0	0.00	0
+```
+
+```{r}
+> cov_matrix <- delitos_data %>%
++   st_drop_geometry() %>%
++   select(contains('24')) %>%
++   #select(-sum_24TR, -sum_24SE, -sum_24SS) %>%
++   cov()
+>   round(2) %>%
++   knitr::kable(digits = 2, caption = "Covariance Matrix")
+> 
+> # Effective Variance
+> det(cov_matrix)^(1/ncol(cov_matrix))
+[1] 0.01707155
+> 
+> # Log-Transformed Effective Variance
+> det(log(cov_matrix + 1))^(1/ncol(cov_matrix))
+[1] 0.01558223
+> 
+> # Effective Standard Deviation
+> det(cov_matrix)^(1/(ncol(cov_matrix) * 2))
+[1] 0.1306581
+> 
+> # Log-Transformed Effective Standard Deviation
+> det(log(cov_matrix + 1))^(1/(ncol(cov_matrix) * 2))
+[1] 0.1248288
+```
+
+Effective variance and effective standard deviation are measures that reflect the variability in a data set. In this case, they are derived from the determinant of the covariance matrix, which measures how variables vary relative to one another.
+
+Covariance Matrix The covariance matrix is ​​fundamental in statistics because it captures the covariance between multiple variables. It shows how these variables change together.
+
+1.  **Effective Variance:** 0.01707155
+
+    det(cov_matrix): Calculates the determinant of the covariance matrix.
+
+    ```         
+    > xxx <- det(cov_matrix) > xxx [1] 1.046037e-23
+    ```
+
+    Expression: we raise the determinant to:
+
+    $$
+    (\Large\frac{1}{ncol(cov_matrix)} )
+    $$
+
+    to calculate the effective variance in the data set, calculated from the determinant of the covariance matrix. This measure gives an indicator of the joint variability of the variables in the dataset. It indicates how much joint variability the variables transmit in the set when considering their interactions and individual variances.
+
+2.  **Log-Transformed Effective Variance:** 0.01558223
+
+    Similar to the previous calculation, but working with the log-transformed covariance matrix. This is done by first adding 1 to avoid problems with logarithms of zero. This value indicates the effective variance of the variables after applying the logarithmic transformation.
+
+    Using log-transformed data can help reduce the influence of outliers and improve the normality of the data.
+
+3.  **Effective Standard Deviation:** 0.1306581
+
+    This calculation is used to determine the effective standard deviation and is based on the determinant of the covariance matrix. Raising the determinant to
+
+$$
+(\Large\frac{1}{(ncol(cov_matrix) * 2)})
+$$
+
+gives the square root of the effective variance. Provides a measure of the dispersion in the variables in the data set.
+
+4.  **Log-Transformed Effective Standard Deviation:** 0.1248288
+
+    Here, the effective standard deviation is calculated using the log-transformed covariance matrix, using the same approach as before.
+
+    This value is the effective standard deviation calculated from the covariance matrix after applying the logarithmic transformation. As with variance, this transformation can help provide a better representation of dispersion, especially in data sets that may not follow a normal distribution.
+
+------------------------------------------------------------------------
+
+**Antioquia:\
+**
+
+```{r}
+> # Effective Variance
+> det(cov_matrix)^(1/ncol(cov_matrix))
+[1] 0.01111655
+> 
+> # Log-Transformed Effective Variance
+> det(log(cov_matrix + 1))^(1/ncol(cov_matrix))
+[1] NaN
+> 
+> # Effective Standard Deviation
+> det(cov_matrix)^(1/(ncol(cov_matrix) * 2))
+[1] 0.105435
+> 
+> # Log-Transformed Effective Standard Deviation
+> det(log(cov_matrix + 1))^(1/(ncol(cov_matrix) * 2))
+[1] NaN
 
 ```
-Atlántico: 
 
-Values are close to cero, meaning that crime in Atlántico region are very close from the mean. 
+The Global Variability Metric measures the overall variability of a dataset through the calculation of the effective variance and the effective standard deviation. In this department, an effective variance of 0.0111 and an effective standard deviation of 0.105435 were obtained. The resulting values are relatively low, indicating that the combined dispersion among the analyzed variables is reduced, meaning they exhibit low general variability within the proposed multidimensional space. It is important to note that the logarithmic metrics yielded a NaN result, due to the covariance matrix containing values that do not allow a valid application of the logarithm (zeros or negative values). A logarithmic transformation could be applied, as demonstrated in other parts of the code, to address this issue; however, it is not entirely necessary in this case, as the variables are within comparable ranges.
 
-# Key Players and Topics
+------------------------------------------------------------------------
 
-# Non-Parametric Correlation {.unnumbered}
-
-## Spearman's Rank Correlation
+## Linear Dependency and Precision Matrix
 
 ```{r}
 #| echo: true
 #| message: false
 #| warning: false
 
-delitos_data_Atl <- delitos_data %>% 
+# Compute precision matrix
+S_inv <- solve(cov_matrix)
+
+# Display precision matrix (should match example values)
+cat("Precision Matrix (S⁻¹):\n")
+print(S_inv, digits = 2)
+
+# Extract correct row components of the selected crime
+dependent_variable_index <- 5
+
+first_row <- S_inv[dependent_variable_index, ]
+print(first_row, digits = 2)
+
+diag_element <- S_inv[dependent_variable_index, dependent_variable_index]
+print(diag_element, digits = 2)
+
+# Compute regression coefficients
+beta_coefficients <- -first_row[-dependent_variable_index] / diag_element
+print(beta_coefficients, digits = 2)
+
+# Compute residual variance
+residual_variance <- 1 / diag_element
+residual_sd <- sqrt(residual_variance)  # Residual standard error
+
+# Print residual standard error
+print(residual_sd, digits = 2)
+
+# Compute R^2
+r_squared <- 1 - (residual_variance / cov_matrix[dependent_variable_index, dependent_variable_index])
+print(r_squared, digits = 2)
+
+# Verify with lm() regression
+delitos <- delitos_data %>%
+  st_drop_geometry() %>%
+  select(contains('24')) %>%
   select(-sum_24TR, -sum_24SE, -sum_24SS)
 
-delitos_data_Atl %>%
+# Fit model
+model <- lm(sum_24HP ~ ., data = data.frame(delitos))
+summary(model)
+```
+
+**Atlántico:**
+
+------------------------------------------------------------------------
+
+**Valle del Cauca:**
+
+------------------------------------------------------------------------
+
+**Antioquia:**
+
+```{r}
+> #| echo: true
+> #| message: false
+> #| warning: false
+> 
+> # Compute precision matrix
+> S_inv <- solve(cov_matrix)
+> 
+> # Display precision matrix (should match example values)
+> cat("Precision Matrix (S⁻¹):\n")
+Precision Matrix (S⁻¹):
+> print(S_inv, digits = 2)
+                  sum_24HOM sum_24LP sum_24VI sum_24DS sum_24HP sum_24HR sum_24HC sum_24HA sum_24HM sum_24SS sum_24SE sum_24EX sum_24TR sum_24HP_jittered
+sum_24HOM            78.264   -0.502   -0.228  4.6e-01  7.3e+02   -0.141    -0.32    -0.56    0.085  3.2e-01 -5.9e+01   -0.454 -6.7e+00          -7.3e+02
+sum_24LP             -0.502    1.854   -0.018 -3.1e-01 -8.2e+01   -0.642    -0.21     0.13   -0.484  5.5e-02 -4.6e+00   -0.884 -5.2e-01           8.2e+01
+sum_24VI             -0.228   -0.018    1.628 -1.7e+00 -5.8e+01   -0.166     0.19    -0.35   -0.287  1.8e-01  1.3e+00   -0.746 -4.8e-02           5.8e+01
+sum_24DS              0.460   -0.315   -1.708  8.8e+00  1.5e+02   -1.778     0.37     0.39   -0.941 -4.7e-03 -1.8e-02   -1.612  6.5e-01          -1.5e+02
+sum_24HP            732.650  -82.223  -58.380  1.5e+02  3.0e+08   81.430  -270.14   208.92  139.543 -7.6e+03  2.9e+02  -14.396  6.2e+03          -3.0e+08
+sum_24HR             -0.141   -0.642   -0.166 -1.8e+00  8.1e+01   14.736    -0.40     0.22   -3.181 -3.2e-02  8.9e+00   -0.550  1.5e+00          -8.1e+01
+sum_24HC             -0.318   -0.214    0.185  3.7e-01 -2.7e+02   -0.405     4.94    -1.06   -0.379  1.8e-01 -1.0e+01   -0.186  1.2e-01           2.7e+02
+sum_24HA             -0.563    0.130   -0.347  3.9e-01  2.1e+02    0.220    -1.06    43.34   -1.369  2.9e-01 -8.6e+00   -2.715  1.7e+00          -2.1e+02
+sum_24HM              0.085   -0.484   -0.287 -9.4e-01  1.4e+02   -3.181    -0.38    -1.37    4.723  6.7e-02 -5.0e+00   -0.049 -5.5e-01          -1.4e+02
+sum_24SS              0.321    0.055    0.176 -4.7e-03 -7.6e+03   -0.032     0.18     0.29    0.067  1.2e+04 -4.1e-01    0.144  2.1e-01           7.6e+03
+sum_24SE            -58.985   -4.565    1.324 -1.8e-02  2.9e+02    8.878    -9.96    -8.62   -4.975 -4.1e-01  1.0e+04   -2.554  9.5e+00          -2.9e+02
+sum_24EX             -0.454   -0.884   -0.746 -1.6e+00 -1.4e+01   -0.550    -0.19    -2.72   -0.049  1.4e-01 -2.6e+00   30.227 -6.4e+00           1.4e+01
+sum_24TR             -6.657   -0.520   -0.048  6.5e-01  6.2e+03    1.550     0.12     1.65   -0.548  2.1e-01  9.5e+00   -6.397  2.5e+03          -6.2e+03
+sum_24HP_jittered  -732.626   82.190   58.257 -1.5e+02 -3.0e+08  -81.283   269.95  -209.04 -139.500  7.6e+03 -2.9e+02   14.331 -6.2e+03           3.0e+08
+> 
+> # Extract correct row components of the selected crime
+> dependent_variable_index <- 5
+> 
+> first_row <- S_inv[dependent_variable_index, ]
+> diag_element <- S_inv[dependent_variable_index, dependent_variable_index]
+> 
+> # Compute regression coefficients
+> beta_coefficients <- -first_row[-dependent_variable_index] / diag_element
+> print(beta_coefficients, digits = 2)
+        sum_24HOM          sum_24LP          sum_24VI          sum_24DS          sum_24HR          sum_24HC          sum_24HA          sum_24HM 
+         -2.4e-06           2.7e-07           1.9e-07          -5.1e-07          -2.7e-07           9.0e-07          -7.0e-07          -4.6e-07 
+         sum_24SS          sum_24SE          sum_24EX          sum_24TR sum_24HP_jittered 
+          2.5e-05          -9.6e-07           4.8e-08          -2.1e-05           1.0e+00 
+> 
+> # Compute residual variance
+> residual_variance <- 1 / diag_element
+> residual_sd <- sqrt(residual_variance)  # Residual standard error
+> 
+> # Print residual standard error
+> print(residual_sd, digits = 2)
+[1] 5.8e-05
+> 
+> # Compute R^2
+> r_squared <- 1 - (residual_variance / cov_matrix[dependent_variable_index, dependent_variable_index])
+> print(r_squared, digits = 2)
+[1] 1
+> 
+> # Verify with lm() regression
+> delitos <- delitos_data %>%
++   st_drop_geometry() %>%
++   select(contains('24')) %>%
++   select(-sum_24TR, -sum_24SE, -sum_24SS)
+> 
+> # Fit model
+> model <- lm(sum_24HP ~ ., data = data.frame(delitos))
+> summary(model)
+
+Call:
+lm(formula = sum_24HP ~ ., data = data.frame(delitos))
+
+Residuals:
+       Min         1Q     Median         3Q        Max 
+-1.110e-04 -5.003e-05 -2.020e-07  4.975e-05  1.033e-04 
+
+Coefficients:
+                    Estimate Std. Error    t value Pr(>|t|)    
+(Intercept)        1.174e-07  2.714e-07  4.320e-01    0.665    
+sum_24HOM         -2.499e-06  2.286e-06 -1.093e+00    0.274    
+sum_24LP           2.688e-07  3.525e-07  7.630e-01    0.446    
+sum_24VI           1.936e-07  3.305e-07  5.860e-01    0.558    
+sum_24DS          -5.014e-07  7.675e-07 -6.530e-01    0.514    
+sum_24HR          -2.573e-07  9.940e-07 -2.590e-01    0.796    
+sum_24HC           8.986e-07  5.749e-07  1.563e+00    0.118    
+sum_24HA          -6.828e-07  1.705e-06 -4.000e-01    0.689    
+sum_24HM          -4.694e-07  5.627e-07 -8.340e-01    0.404    
+sum_24EX          -5.603e-09  1.424e-06 -4.000e-03    0.997    
+sum_24HP_jittered  1.000e+00  9.086e-08  1.101e+07   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 5.769e-05 on 49599 degrees of freedom
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 2.487e+13 on 10 and 49599 DF,  p-value: < 2.2e-16
+
+> "sum_24HP_jittered" %in% colnames(delitos_data)
+[1] TRUE
+```
+
+Linear dependency in the data is identified through the covariance matrix and its eigenvalues, where a value close to zero indicates the presence of dependency. The precision matrix (PM), which is the inverse of the covariance matrix, measures the conditional dependencies between variables. It is important to note that the variable sum_24HP_jittered is essentially the same as sum_24HP; however, it is created by adding a small amount of random noise because having many data points with identical values can cause technical issues such as unbalanced groups, as multiple points may fall exactly on the same quantile boundary. For this reason, this variable is not included as a predictor in the regression, since it does not contribute new information and merely duplicates the dependent variable. In the case of Antioquia, the PM was calculated, and the coefficients of the multiple linear regression for the dependent variable sum_24HP were subsequently derived, confirming that the obtained coefficients are consistent with the results of the fitted model.
+
+------------------------------------------------------------------------
+
+# Key Players and Topics
+
+# Non-Parametric Correlation {.unnumbered}
+
+Correlation measures the strength and direction of association between two variables. While Pearson's correlation requires a linear relationship and normally distributed data, \emph{Spearman's rank correlation} and \emph{Kendall's tau} are \emph{non-parametric} measures, making them ideal for analyzing data that may not be linear or normally distributed.
+
+## Spearman's Rank Correlation
+
+Spearman's correlation coefficient $\rho$ is based on \emph{ranked} data. For two variables $X$ and $Y$, we replace each observation by its rank.
+
+```{r}
+#| include: false
+source('setup.R')
+```
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+delitos_data <- delitos_data %>% 
+  select(-sum_24TR, -sum_24SE, -sum_24SS)
+
+delitos_data %>%
   st_drop_geometry() %>%
   select(contains('24')) %>%
   cor(., method = "spearman", use = "complete.obs") %>%
@@ -646,268 +2165,97 @@ delitos_data_Atl %>%
   corrplot(., method = "color", title = "Spearman Correlation", mar=c(0,0,1,0))
 ```
 
-Both Spearman's $\rho$ captures the \emph{monotonic} relationship between two variables. They are more robust to outliers and non-linear relationships than Pearson's correlation. In the context of areal data (e.g., crime rates, population density across polygons), these measures can reveal how variables co-vary without assuming linearity or normality.
+**Atlántico:**
 
-# Spatial Neighborhood Matrices {.unnumbered}
+¿? xD
 
-## Neighbors Based on Contiguity
+------------------------------------------------------------------------
 
+**Valle del Cauca:**
+
+```         
++   corrplot(., method = "color", title = "Spearman Correlation", mar=c(0,0,1,0))
+          sum_24HOM sum_24LP sum_24VI sum_24DS sum_24HP sum_24HR sum_24HC sum_24HA sum_24HM sum_24EX
+sum_24HOM     1.000    0.092    0.040    0.022    0.045    0.016    0.030    0.010    0.020    0.027
+sum_24LP      0.092    1.000    0.138    0.067    0.151    0.060    0.074    0.037    0.097    0.065
+sum_24VI      0.040    0.138    1.000    0.091    0.149    0.058    0.069    0.055    0.087    0.062
+sum_24DS      0.022    0.067    0.091    1.000    0.086    0.035    0.044    0.032    0.061    0.045
+sum_24HP      0.045    0.151    0.149    0.086    1.000    0.098    0.170    0.122    0.156    0.085
+sum_24HR      0.016    0.060    0.058    0.035    0.098    1.000    0.036    0.056    0.040    0.021
+sum_24HC      0.030    0.074    0.069    0.044    0.170    0.036    1.000    0.049    0.087    0.062
+sum_24HA      0.010    0.037    0.055    0.032    0.122    0.056    0.049    1.000    0.059    0.024
+sum_24HM      0.020    0.097    0.087    0.061    0.156    0.040    0.087    0.059    1.000    0.042
+sum_24EX      0.027    0.065    0.062    0.045    0.085    0.021    0.062    0.024    0.042    1.000
+```
+
+Spearman's rank correlation is the nonparametric counterpart of Pearson's correlation. It does not use the original data, but rather the data ranges.
+
+The correlation matrix shows how each pair of variables is related and how to interpret the coefficients between -1 and 1, where:
+
+\(1\) Indicates a perfect positive correlation,
+
+(-1) Indicates a perfect negative correlation,
+
+\(0\) Indicates no correlation.
+
+Each correlation index gives us three specific pieces of information.
+
+Direction: If the Rho is positive, the correlation is positive.
+
+Strength: The closer the correlation is to 1, the greater the strength, i.e., the stronger the association between the variables.
+
+Significance: If we take another sample from the same population, we will likely find the same association.
+
+So, taking on account the table we can conclude:
+
+sum_24HP and sum_24HC: They have a correlation of (0.170), which is the strongest correlation observed in this matrix. This suggests a moderate positive relationship between these two variables; as one increases, the other tends to increase.
+
+sum_24HP and sum_24LP: A correlation of (0.151), also positive, indicating a moderate positive relationship between these two variables.
+
+All other correlations are quite low, reinforcing the idea that none of the variables are strongly related to the others. This indicates that there is no significant redundancy in the variables, since no strong correlations are observed that suggest linear dependence.
+
+------------------------------------------------------------------------
+
+**Antioquia:**
+
+Prompt: I am studying the methodology of Spearman and Pearson for data analysis, and I need two references to help me understand it better.
+
+::: {style="color: blue; background-color: yellow;"}
+References: Gauthier, J. (2001). Detecting trends using Spearman’s rank correlation coefficient. Environmental Forensics, 2(4), 359–362. <https://doi.org/10.1006/enfo.2001.0061> Hauke, J., & Kossowski, T. (2011). Comparison of values of Pearson’s and Spearman’s correlation coefficients on the same sets of data. Quaestiones Geographicae, 30(2), 87–93. <https://doi.org/10.2478/v10117-011-0021-1>
+:::
 
 ```{r}
 #| echo: true
 #| message: false
 #| warning: false
 
-# Create a spatial neighbors list using Queen contiguity
-# (i.e., polygons are considered neighbors if they share any point: edge or vertex)
-nb <- spdep::poly2nb(delitos_data, queen = TRUE)
-head(nb)
-
-# Replace invalid neighbor entries (i.e., [1] 0) with empty integer vectors
-# This ensures compatibility with functions that expect valid neighbor lists only
-nb_0 <- lapply(nb, function(x) if(length(x)==1 && x==0) integer(0) else x)
-
-# Polygons with neighbors
-table(sapply(nb_0, length))
-
-# Neighbors of Order k Based on Contiguity
-# Neighbors of second order
-nblags <- spdep::nblag(neighbours = nb, maxlag = 2)
-
-# Combine neighbors of all orders up to the specified lag (in this case, up to order 2)
-# This creates a cumulative neighbor list including first- and second-order neighbors
-nblagsc <- spdep::nblag_cumul(nblags)
-table(sapply(nblagsc, length))
-```
-Most polygons in the analysed departments have no neighbors under the queen contiguity method; thus, the DANE polygons are not usually contiguous, as they leave an empty space for streets.
-
-## Neighbors Based on k Nearest Neighbors
-
-```{r}
-#| echo: true
-#| message: false
-#| warning: false
-
-# Compute centroids of the polygons
-coo <- st_centroid(delitos_data)
-
-# Create a neighbor list where each polygon (based on its centroid `coo`) is connected 
-# to its 3 nearest neighbors using k-nearest neighbors (k = 3)
-nb <- knn2nb(knearneigh(coo, k = 3)) # k number nearest neighbors
-
-# Polygons with neighbors
-table(sapply(nb, length))
-
-# Subset data to the first 10 polygons
-delitos_data_10 <- delitos_data[1:100, ]
-
-# Recompute neighbor list for these 10 polygons to avoid index mismatches
-nb_10 <- knn2nb(knearneigh(st_centroid(delitos_data_10), k = 3))
-
-# Compute centroids for the 10 polygons
-coords_10 <- st_coordinates(st_centroid(delitos_data_10))
-
-# Plot the first 10 polygons and overlay neighbor connections in red
-plot(st_geometry(delitos_data_10), border = "lightgray", main = "First Polygons with 3 Nearest Neighbors")
-plot.nb(nb_10, coords_10, add = TRUE, col = "red", lwd = 2)
-```
-
-## Neighbors Based on Distance
-
-```{r}
-#| echo: true
-#| message: false
-#| warning: false
-
-# Create a neighbor list using distance-based contiguity:
-# Polygons are considered neighbors if their centroids are within 0.4 units (e.g., degrees) apart
-nb <- dnearneigh(x = st_centroid(delitos_data), d1 = 0, d2 = 0.4)
-
-# Polygons with neighbors
-hist(sapply(nb, length))
-
-# Subset data to the first 10 polygons
-delitos_data_10 <- delitos_data[1:100, ]
-
-# Recompute neighbor list for these 10 polygons to avoid index mismatches
-nb_10 <- dnearneigh(x = st_centroid(delitos_data_10), d1 = 0, d2 = 0.4)
-
-# Compute centroids for the 10 polygons
-coords_10 <- st_coordinates(st_centroid(delitos_data_10))
-
-# Plot the first 10 polygons and overlay neighbor connections in red
-plot(st_geometry(delitos_data_10), border = "lightgray", main = "First Polygons with 3 Nearest Neighbors")
-plot.nb(nb_10, coords_10, add = TRUE, col = "red", lwd = 2)
-```
-
-Determining an Appropriate Upper Distance Bound: To ensure that each area in a spatial dataset has at least (k) neighbors, we can determine an appropriate upper distance bound by first computing the (k) nearest neighbors for each area. For example, using the Queen contiguity method, one may use the \texttt{spdep::knearneigh()} function with (k=1) to obtain the nearest neighbor for each polygon. This yields a matrix of neighbor IDs, which is then converted into a neighbor list (of class \texttt{nb}) via \texttt{knn2nb()}. Next, the \texttt{spdep::nbdists()} function computes the distances along the links between each area and its neighbor. By summarizing these distances (e.g., using \texttt{summary(unlist(dist1))}), we can observe the range of distances.
-
-```{r}
-#| echo: true
-#| message: false
-#| warning: false
-
-# Compute k-nearest neighbors: for each polygon centroid, find its 1 nearest neighbor (k = 1)
-nb1 <- knn2nb(knearneigh(coo, k = 1))
-
-# Calculate the Euclidean distances between each polygon and its nearest neighbor
-dist1 <- nbdists(nb1, coo)
-
-# Summarize all distances to understand the minimum, maximum, and quartiles
-summary(unlist(dist1))
-
-# Create a distance-based neighbor list: polygons whose centroids are within [0, 1.2] units are considered neighbors
-nb <- dnearneigh(x = st_centroid(delitos_data), d1 = 0, d2 = 1.2)
-
-# Polygons with neighbors
-hist(sapply(nb, length))
-```
-
-## Neighborhood Matrices
-
-```{r}
-#| echo: true
-#| message: false
-#| warning: false
-
-# Spatial weights matrix using Queen contiguity (binary weights)
-# 'queen = TRUE' considers shared edges OR vertices as neighbors
-nb <- poly2nb(delitos_data, queen = TRUE)
-
-# Convert the neighbor list to a spatial weights list object
-# 'style = "W"' row-standardizes the weights (sums to 1)
-# 'zero.policy = TRUE' avoids errors when some polygons have no neighbors
-nbw <- spdep::nb2listw(nb, style = "W", zero.policy = TRUE)
-
-# Display the first 10 rows of spatial weights (for the first 10 polygons)
-nbw$weights[1:10]
-
-# Spatial weights matrix based on inverse distance values
-# Compute centroids of polygons
-coo <- st_centroid(delitos_data)
-
-# Use Queen contiguity again to define neighbors
-nb <- poly2nb(delitos_data, queen = TRUE)
-
-# Compute distances between neighbors based on their centroids
-dists <- nbdists(nb, coo)
-
-# Create inverse distance weights (1/distance) for each pair of neighbors
-ids <- lapply(dists, function(x){1/x})
-
-# Create a listw object using binary style ("B" = no standardization)
-nbw <- nb2listw(nb, glist = ids, style = "B", zero.policy = TRUE)
-
-# Display the first 10 inverse-distance-based weights
-nbw$weights[1:10]
-```
-
-# Spatial autocorrelation
-
-# Correspondance Analysis {.unnumbered}
-
-```{r}
-#| eval: false
-#| message: false
-#| warning: false
-#| include: false
-
-# Paso 1: Crear la matriz de frecuencias de delitos en polígonos
-Freq <- delitos_data %>%
+#delitos_data <- delitos_data %>% 
+ # select(-sum_24TR, -sum_24SE, -sum_24SS)For the Antioquia case, it is not necessary.
+  
+delitos_data %>%
   st_drop_geometry() %>%
-  select(contains('24'))
+  select(contains('24')) %>%
+  cor(., method = "spearman", use = "complete.obs") %>%
+  round(., 3) %>% 
+  print(.) %>%
+  corrplot(., method = "color", title = "Spearman Correlation", mar=c(0,0,1,0))
 
-rownames(Freq) <- c("Zona Norte", "Zona Sur", "Zona Este", "Zona Oeste")
-colnames(Freq) <- c("Homicidio", "Robo", "Hurto", "Extorsión")
 
-print("Matriz de frecuencias:")
-print(F)
-
-# Paso 2: Calcular la tabla de frecuencias relativas
-total_F <- sum(F)
-F_rel <- F / total_F
-
-print("Matriz de frecuencias relativas:")
-print(F_rel)
-
-# Paso 3: Cálculo de los totales por fila y columna
-fi <- rowSums(F_rel)  # Suma por fila
-fj <- colSums(F_rel)  # Suma por columna
-
-D_f <- diag(fi)  # Matriz diagonal de totales de fila
-D_c <- diag(fj)  # Matriz diagonal de totales de columna
-
-# Paso 4: Construcción de la matriz de correspondencias Z
-D_f_sqrt_inv <- diag(1 / sqrt(fi))  # Raíz cuadrada inversa de los totales de fila
-D_c_sqrt_inv <- diag(1 / sqrt(fj))  # Raíz cuadrada inversa de los totales de columna
-
-Z <- D_f_sqrt_inv %*% (F_rel - fi %o% fj) %*% D_c_sqrt_inv
-
-print("Matriz de correspondencias Z:")
-print(Z)
-
-# Paso 5: Descomposición en Valores Singulares (SVD)
-svd_result <- svd(Z)  # Descomposición de Z
-
-U <- svd_result$u  # Vectores propios de ZZ' (Filas)
-D <- diag(svd_result$d)  # Matriz diagonal de valores singulares
-V <- svd_result$v  # Vectores propios de Z'Z (Columnas)
-
-print("Matriz U (Vectores propios de ZZ'):")
-print(U)
-
-print("Matriz D (Valores singulares):")
-print(D)
-
-print("Matriz V (Vectores propios de Z'Z):")
-print(V)
-
-# Paso 6: Proyección de filas y columnas en el espacio reducido
-dim_reducida <- 2
-C_f <- D_f_sqrt_inv %*% U[, 1:dim_reducida] %*% D[1:dim_reducida, 1:dim_reducida]  # Coordenadas filas
-C_c <- D_c_sqrt_inv %*% V[, 1:dim_reducida] %*% D[1:dim_reducida, 1:dim_reducida]  # Coordenadas columnas
-
-print("Coordenadas filas en el espacio reducido:")
-print(C_f)
-
-print("Coordenadas columnas en el espacio reducido:")
-print(C_c)
-
-# Librerías
-library(MASS)  # Para manipulación matricial
-library(ca)  # Para el análisis de correspondencias
-
-# Matriz de frecuencias (ejemplo: delitos en polígonos)
-F <- matrix(c(
-  12, 5, 8, 2,
-  7, 3, 10, 1,
-  4, 2, 6, 1,
-  15, 8, 14, 5
-), nrow = 4, byrow = TRUE)
-
-rownames(F) <- c("Zona Norte", "Zona Sur", "Zona Este", "Zona Oeste")
-colnames(F) <- c("Homicidio", "Robo", "Hurto", "Extorsión")
-
-# Total de la tabla
-n_total <- sum(F)
-
-# Matriz de frecuencias relativas
-F_rel <- F / n_total
-
-# Totales por fila y columna
-f_i <- rowSums(F_rel)
-f_j <- colSums(F_rel)
-
-# Matriz esperada bajo independencia
-F_exp <- outer(f_i, f_j)
-
-# Cálculo de ji-cuadrado
-chi2 <- sum((F_rel - F_exp)^2 / F_exp) * n_total
-print(paste("Estadístico Ji-cuadrado:", round(chi2, 4)))
-
-# Distancia ji-cuadrado entre filas
-D_c_inv <- diag(1 / f_j)  # Inversa de los totales de columnas
-dist_ji <- as.matrix((F_rel - F_exp) %*% D_c_inv %*% t(F_rel - F_exp))
-print("Matriz de distancias ji-cuadrado entre filas:")
-print(dist_ji)
+          sum_24HOM sum_24LP sum_24VI sum_24DS sum_24HP sum_24HR sum_24HC sum_24HA sum_24HM sum_24EX
+sum_24HOM     1.000    0.069    0.035    0.031    0.041    0.020    0.032    0.018    0.024    0.026
+sum_24LP      0.069    1.000    0.207    0.139    0.249    0.102    0.164    0.091    0.165    0.117
+sum_24VI      0.035    0.207    1.000    0.166    0.247    0.129    0.109    0.099    0.222    0.121
+sum_24DS      0.031    0.139    0.166    1.000    0.148    0.087    0.091    0.070    0.124    0.088
+sum_24HP      0.041    0.249    0.247    0.148    1.000    0.190    0.255    0.157    0.269    0.155
+sum_24HR      0.020    0.102    0.129    0.087    0.190    1.000    0.095    0.077    0.124    0.082
+sum_24HC      0.032    0.164    0.109    0.091    0.255    0.095    1.000    0.097    0.132    0.104
+sum_24HA      0.018    0.091    0.099    0.070    0.157    0.077    0.097    1.000    0.126    0.078
+sum_24HM      0.024    0.165    0.222    0.124    0.269    0.124    0.132    0.126    1.000    0.121
+sum_24EX      0.026    0.117    0.121    0.088    0.155    0.082    0.104    0.078    0.121    1.000
 ```
+
+Spearman’s coefficient helps us evaluate monotonic relationships between variables, that is, to identify consistent increasing or decreasing patterns without assuming linearity or normality in the data. In our case, since the data are social and criminal in nature, this is valuable because such distributions are often skewed, and outliers can strongly influence traditional parametric methods (Hauke & Kossowski, 2011).
+
+In general, in the department of Antioquia, most of the coefficients have low ranges close to zero. This means there is a general absence of strong monotonic associations between the variables. However, in the specific case of sum_24HP, we found interesting patterns, such as its correlations with sum_24HM (0.269), sum_24HC (0.255), and sum_24LP (0.249). Based on this information, we can deduce that although theft from persons, theft of cars or motorcycles, and personal injuries are different types of crimes, they might share some similar dynamics, albeit with a weak correlation.
+
+Additionally, since these correlations are positive, the relationship is direct; that is, both variables increase together. It is important to mention that Spearman’s coefficient does not measure causality, only association, which is key when interpreting our results.
