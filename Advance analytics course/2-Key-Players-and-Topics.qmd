@@ -221,7 +221,7 @@ plot(st_geometry(delitos_data_10), border = "lightgray", main = "First Polygons 
 plot.nb(nb_10, coords_10, add = TRUE, col = "red", lwd = 2)
 ```
 
-Determining an Appropriate Upper Distance Bound: To ensure that each area in a spatial dataset has at least (k) neighbors, we can determine an appropriate upper distance bound by first computing the (k) nearest neighbors for each area. For example, using the Queen contiguity method, one may use the \texttt{spdep::knearneigh()} function with (k=1) to obtain the nearest neighbor for each polygon. This yields a matrix of neighbor IDs, which is then converted into a neighbor list (of class \texttt{nb}) via \texttt{knn2nb()}. Next, the \texttt{spdep::nbdists()} function computes the distances along the links between each area and its neighbor. By summarizing these distances (e.g., using \texttt{summary(unlist(dist1))}), we can observe the range of distances.
+Determining an Appropriate Upper Distance Bound: To ensure that each area in a spatial dataset has at least (k) neighbors, we can determine an appropriate upper distance bound by first computing the (k) nearest neighbors for each area. For example, using the Queen contiguity method, one may use the \textit{spdep::knearneigh()} function with (k=1) to obtain the nearest neighbor for each polygon. This yields a matrix of neighbor IDs, which is then converted into a neighbor list (of class \textit{nb}) via \textit{knn2nb()}. Next, the \textit{spdep::nbdists()} function computes the distances along the links between each area and its neighbor. By summarizing these distances (e.g., using \textit{summary(unlist(dist1))}), we can observe the range of distances.
 
 ```{r}
 #| echo: true
@@ -283,7 +283,281 @@ nbw <- nb2listw(nb, glist = ids, style = "B", zero.policy = TRUE)
 nbw$weights[1:10]
 ```
 
-# Spatial autocorrelation
+# Spatial autocorrelation {.unnumbered}
+
+## Global Moran’s
+
+Spatial Weights Matrix (W)
+
+The \textit{nb2listw(nb, style = "W")} function calculates the spatial weights matrix, often denoted as $W$. This matrix defines the spatial relationships between the polygons. The \textit{style = "W"} argument specifies row-standardization.
+
+-   Let $w_{ij}$ be an element of the matrix $W$.
+-   If polygon $i$ is a neighbor of polygon $j$, then $w_{ij} = \frac{1}{n_i}$, where $n_i$ is the number of neighbors of polygon $i$.
+-   If polygon $i$ is not a neighbor of polygon $j$, then $w_{ij} = 0$.
+-   The diagonal elements, $w_{ii}$, are typically 0 (a polygon is not considered a neighbor of itself).
+
+In essence, each row of the matrix $W$ represents a polygon, and the entries in that row represent the influence of its neighbors. Row-standardization means that the elements in each row sum to 1.
+
+Global Moran's I Statistic: \textit{moran.test()} function calculates Moran's I, a measure of global spatial autocorrelation. The formula for Moran's I is:
+
+$I = \frac{n \sum_{i=1}^{n} \sum_{j=1}^{n} w_{ij} (x_i - \bar{x})(x_j - \bar{x})}{(\sum_{i=1}^{n} \sum_{j=1}^{n} w_{ij}) \sum_{i=1}^{n} (x_i - \bar{x})^2}$
+
+Where:
+
+-   $n$ is the number of observations (polygons).
+-   $x_i$ is the value of the variable of interest (in your case, \texttt{delitos\_data\$sum\_24HP}) for polygon $i$.
+-   $\bar{x}$ is the mean of the variable $x$.
+-   $w_{ij}$ is the spatial weight between polygon $i$ and polygon $j$ from the matrix $W$.
+
+Simplified:
+
+$I = \frac{\sum_{i=1}^{n} \sum_{j=1}^{n} w_{ij} (x_i - \bar{x})(x_j - \bar{x})}{S^2 \sum_{i=1}^{n} \sum_{j=1}^{n} w_{ij}}$
+
+Where
+
+$S^2 = \frac{1}{n} \sum_{i=1}^{n} (x_i - \bar{x})^2$
+
+Moran's I essentially measures the correlation between the values at a location and the values at neighboring locations.
+
+Interpretation of Moran's I:
+
+-   $I$ ranges from -1 to +1.
+-   $I > 0$: Positive spatial autocorrelation. Similar values tend to cluster together.
+-   $I < 0$: Negative spatial autocorrelation. Dissimilar values tend to cluster together.
+-   $I \approx 0$: Random spatial pattern.
+
+Hypothesis Testing:
+
+The \textit{moran.test()} function also performs a hypothesis test to assess the statistical significance of the observed spatial pattern.
+
+-   \textit{Null Hypothesis ($H_0$):} The variable is randomly distributed in space (no spatial autocorrelation).
+-   \textif{Alternative Hypothesis ($H_a$):} There is spatial autocorrelation (you specified \textit{alternative = "greater"}, so it's testing for \textit{positive} spatial autocorrelation).
+
+Output of \textit{moran.test()}
+
+-   \textit{gmoran[["estimate"]][["Moran I statistic"]]}: The calculated value of Moran's I.
+-   \textit{gmoran[["statistic"]]}: The z-score, which measures how far the observed Moran's I is from the expected value under the null hypothesis, in standard deviations.
+-   \textit{gmoran[["p.value"]]}: The p-value, which is the probability of observing a Moran's 
+    
+`I` value as extreme as, or more extreme than, the one calculated, assuming the null hypothesis is true. A small p-value (typically less than 0.05) suggests that you can reject the null hypothesis and conclude that there is statistically significant spatial autocorrelation.
+
+```{r}
+# Compute centroids of the polygons
+coo <- st_centroid(delitos_data)
+
+# Create a neighbor list where each polygon (based on its centroid `coo`) is connected 
+# to its 3 nearest neighbors using k-nearest neighbors (k = 3)
+nb <- knn2nb(knearneigh(coo, k = 3)) # k number nearest neighbors
+
+# Global Moran's I
+# Convert the neighbor list to a listw object
+lw <- nb2listw(nb, style = "W") # Use nb2listw
+
+# Now you can use 'lw' in moran.test
+gmoran <- moran.test(delitos_data$sum_24HP, lw, alternative = "greater")
+
+gmoran
+
+gmoran[["estimate"]][["Moran I statistic"]] # Moran's I
+
+gmoran[["statistic"]] # z-score
+
+gmoran[["p.value"]] # p-value
+```
+
+-   `gmoran` The p-value (0.01282) is less than the significance level of 0.05, so we reject the null hypothesis. This means that there is statistically significant positive spatial autocorrelation in the data. In other words, the values of delitos_data$sum_24HP show a tendency to cluster together geographically. The positive z-score (2.2318) further supports this conclusion. It indicates that the observed Moran's I is significantly higher than what would be expected by chance if the values were randomly distributed.
+-   `gmoran[["estimate"]][["Moran I statistic"]]`The value you got, 0.004845791, is a small positive number. Here's what that means: Positive Spatial Autocorrelation: The fact that it's positive indicates there's a slight tendency for values at nearby locations to be similar. In summary, there's a very slight indication that similar values are located near each other, but the effect is not very pronounced.
+-   `gmoran[["statistic"]]` The z-score of 2.2318 indicates how many standard deviations the observed Moran's I is from the expected value under the null hypothesis. A positive z-score suggests that the observed spatial pattern is more clustered than expected by chance. 
+-   `gmoran[["p.value"]]` The p-value of 0.01282 indicates the probability of observing a Moran's I value as extreme as the one calculated, assuming the null hypothesis is true. Since this p-value is less than the common significance level of 0.05, it suggests that the observed spatial pattern is statistically significant.
+
+
+\textit{Moran's I Monte Carlo Simulation:} The code you provided performs a Monte Carlo simulation to assess the significance of Moran's I.  Here's a breakdown:
+
+Moran's I Monte Carlo Test: The function `moran.mc` performs a Monte Carlo simulation of Moran's I.  Instead of relying on the theoretical distribution of Moran's I (which can be complex), it generates a set of random spatial patterns to create an empirical distribution.
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+gmoranMC <- moran.mc(delitos_data$sum_24HP, lw, nsim = 99)
+gmoranMC
+
+hist(gmoranMC$res)
+abline(v = gmoranMC$statistic, col = "red")
+```
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+moran.plot(delitos_data$sum_24HP, lw)
+```
+
+## Local Moran’s I
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+lmoran <- localmoran(delitos_data$sum_24HP, lw, alternative = "greater")
+head(lmoran)
+```
+
+Let's go through those columns again, but this time, I'll emphasize what they tell you about the pattern at each individual location:
+
+Ii (Local Moran's I):
+
+-   Big positive number: This neighborhood has a crime rate similar to its neighbors. If its crime rate is high, its neighbors also tend to have high crime rates (a "hot spot"). If its crime rate is low, its neighbors also tend to have low crime rates (a "cold spot").
+-   Big negative number: This neighborhood has a crime rate very different from its neighbors. A high-crime neighborhood surrounded by low-crime neighborhoods, or vice versa (a "spatial outlier").
+-   Number close to zero: This neighborhood's crime rate isn't particularly similar to or different from its neighbors. There's no clear local pattern.
+
+E.Ii (Expected Ii):
+
+-   This is what Ii would be on average if crime rates were randomly distributed. It's usually a very small number, close to zero. You don't focus on this column too much for direct interpretation.
+
+Var.Ii (Variance of Ii):
+
+-   This tells you how much the Local Moran's I values for this type of situation tend to vary. A larger variance means the Ii value can fluctuate more due to chance. You don't interpret this column directly.
+
+Z.Ii (Z-score of Ii):
+
+-   This is the most important column for determining if the pattern at a location is statistically significant. It tells you how "unusual" the Ii value is.
+-   Big positive or negative number (outside -1.96 to +1.96): This neighborhood has a statistically significant pattern. It's either a hot spot, a cold spot, or a spatial outlier.
+-   Number close to zero (inside -1.96 to +1.96): The pattern at this neighborhood could easily have happened by chance. It's not statistically significant.
+
+Pr(z > E(Ii)) (P-value):
+
+-   This is another way to determine statistical significance.
+-   Small number (less than 0.05): This neighborhood has a statistically significant pattern (hot spot, cold spot, or spatial outlier).
+-   Large number (greater than 0.05): The pattern at this neighborhood could easily have happened by chance. It's not statistically significant.
+
+
+```{r}
+#| eval: false
+#| message: false
+#| warning: false
+
+tmap_mode("view")
+
+delitos_data$lmI <- lmoran[, "Ii"] # local Moran's I
+delitos_data$lmZ <- lmoran[, "Z.Ii"] # z-scores
+# p-values corresponding to alternative greater
+delitos_data$lmp <- lmoran[, "Pr(z > E(Ii))"]
+
+p1 <- tm_shape(delitos_data) +
+  tm_polygons(col = "sum_24HP", title = "vble", style = "quantile") +
+  tm_layout(legend.outside = TRUE)
+
+p2 <- tm_shape(delitos_data) +
+  tm_polygons(col = "lmI", title = "Local Moran's I",
+              style = "quantile") +
+  tm_layout(legend.outside = TRUE)
+
+p3 <- tm_shape(delitos_data) +
+  tm_polygons(col = "lmZ", title = "Z-score",
+              breaks = c(-Inf, 1.65, Inf)) +
+  tm_layout(legend.outside = TRUE)
+
+p4 <- tm_shape(delitos_data) +
+  tm_polygons(col = "lmp", title = "p-value",
+              breaks = c(-Inf, 0.05, Inf)) +
+  tm_layout(legend.outside = TRUE)
+
+tmap_arrange(p1, p2, p3, p4)
+```
+
+p1: sum_24HP (Your Variable)
+
+This map shows the distribution of your variable of interest (sum_24HP).  The style = "quantile" argument means the colors represent quantiles, so each color shows roughly an equal number of polygons.  This map gives you a baseline for seeing how your variable is distributed spatially.
+
+p2: lmI (Local Moran's I)
+
+This map displays the Local Moran's I values.
+
+Positive values (often shown in warmer colors) indicate that a polygon has neighbors with similar values.  This suggests spatial clusters of high values or low values.
+
+Negative values (often shown in cooler colors) indicate that a polygon has neighbors with dissimilar values.  This suggests spatial outliers.
+
+Again, style = "quantile" is used, so the colors represent the distribution of Local Moran's I values.
+
+p3: lmZ (Z-scores)
+
+This map shows the z-scores associated with the Local Moran's I values.  Z-scores help you assess the statistical significance of the local clustering.
+
+You've set breaks = c(-Inf, 1.65, Inf).  Assuming this is a one-tailed test:
+
+Values greater than 1.65 indicate statistically significant (at approximately the 0.05 level) clustering of high values (a "hot spot").
+
+Values less than -1.65 would indicate statistically significant clustering of low values (a "cold spot").
+
+Values between -1.65 and 1.65 suggest the spatial pattern is not statistically significant.
+
+p4: lmp (P-values)
+
+This map displays the p-values associated with the Local Moran's I values.  P-values provide another way to assess statistical significance.
+
+You've set breaks = c(-Inf, 0.05, Inf).
+
+Polygons with p-values less than 0.05 (shown in one color) indicate statistically significant spatial clustering.
+
+Polygons with p-values greater than 0.05 (shown in the other color) do not show statistically significant clustering.
+
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Plot Local Moran's I using tmap
+tm_shape(delitos_data) +
+    tm_polygons(
+        col = "lmZ",
+        title = "Local Moran's I",
+        style = "fixed",
+        breaks = c(-Inf, -1.96, 1.96, Inf),
+        labels = c("Negative SAC", "No SAC", "Positive SAC"),
+        palette = c("blue", "white", "red")
+    ) +
+    tm_layout(legend.outside = TRUE)
+```
+
+## Clusters
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+mp <- moran.plot(as.vector(scale(delitos_data$sum_24HP)), lw)
+delitos_data$quadrant <- NA
+# high-high
+delitos_data[(mp$x >= 0 & mp$wx >= 0) & (delitos_data$lmp <= 0.05), "quadrant"]<- 1
+# low-low
+delitos_data[(mp$x <= 0 & mp$wx <= 0) & (delitos_data$lmp <= 0.05), "quadrant"]<- 2
+# high-low
+delitos_data[(mp$x >= 0 & mp$wx <= 0) & (delitos_data$lmp <= 0.05), "quadrant"]<- 3
+# low-high
+delitos_data[(mp$x <= 0 & mp$wx >= 0) & (delitos_data$lmp <= 0.05), "quadrant"]<- 4
+# non-significant
+delitos_data[(delitos_data$lmp > 0.05), "quadrant"] <- 5
+```
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+tm_shape(delitos_data) + tm_fill(col = "quadrant", title = "",
+breaks = c(1, 2, 3, 4, 5, 6),
+palette =  c("red", "blue", "lightpink", "skyblue2", "white"),
+labels = c("High-High", "Low-Low", "High-Low",
+           "Low-High", "Non-significant")) +
+tm_legend(text.size = 1)  + tm_borders(alpha = 0.5) +
+tm_layout(frame = FALSE,  title = "Clusters")  +
+tm_layout(legend.outside = TRUE)
+```
 
 # Correspondance Analysis {.unnumbered}
 
