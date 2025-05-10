@@ -1,5 +1,5 @@
 # working directory
-#setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 # packages
 list_packages = c('readxl', 'dplyr', 'moments', 'tidyr', 'tibble', 'gt', 'ggplot2', 
@@ -12,4 +12,3 @@ if (length(new.packages)) {
 }
 for (package in list_packages){
   library(package, character.only = T)
-}
