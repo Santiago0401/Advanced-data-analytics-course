@@ -8,7 +8,7 @@ book:
   chapters:
     - index.qmd
     - 1-Issue-for-Decision-Making.qmd
-    - 2-Key-Players-and-Topics.qmd
+    #- 2-Key-Players-and-Topics.qmd
     - 3-Imputing-and-Linking-Data.qmd
     - 4-Spotting-Weak-Predictive-Signals.qmd
     - 5-Data-Storage-and-Traceability.qmd
