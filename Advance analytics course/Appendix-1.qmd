@@ -17,6 +17,15 @@ For the assignment we selected three departments: Antioquia \[05\], Valle del Ca
 We decided to focus on the problem of personal injury. The box plot and quantile analysis show that, like other crime data, homicides in Atlántico are concentrated in a few industrial areas, and 10% of these industrial areas accounted for all homicides in 2024.
 
 ```{r}
+#| include: false
+source('setup.R')
+
+# Load the dataset
+delitos_data <- st_read("data/spatial/crime_spatial_course.gpkg")
+delitos_data <- delitos_data[delitos_data$dpto_ccdgo == '11', ]
+```
+
+```{r}
 #PorAndrés Cervantes
 #------------------------------------------------
 # delitos_data$sum_24HP es un vector.
