@@ -13,6 +13,10 @@ This section is based on *Análisis de datos multivariantes*. See [@peña2002an�
 
 source('setup.R')
 
+# Load the dataset
+delitos_data <- st_read("data/spatial/crime_spatial_course.gpkg")
+delitos_data <- delitos_data[delitos_data$dpto_ccdgo == '11', ]
+
 dim(delitos_data)
 summary(delitos_data)
 

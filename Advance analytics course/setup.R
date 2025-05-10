@@ -13,8 +13,3 @@ if (length(new.packages)) {
 for (package in list_packages){
   library(package, character.only = T)
 }
-
-# Load the dataset
-delitos_data <- st_read("data/spatial/crime_spatial_course.gpkg")
-delitos_data <- delitos_data[delitos_data$dpto_ccdgo == '11', ]
-#delitos_data <- delitos_data[delitos_data$dpto_ccdgo == '05', ]

@@ -1,0 +1,12 @@
+# Appendix 2 {.appendix, .unnumbered}
+
+```{r}
+#| include: false
+source('setup.R')
+
+# Load the dataset
+delitos_data <- st_read("data/spatial/crime_spatial_course.gpkg")
+delitos_data <- delitos_data[delitos_data$dpto_ccdgo == '11', ]
+```
+
+

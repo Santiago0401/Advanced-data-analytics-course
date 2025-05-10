@@ -26,13 +26,14 @@ where $r_{X_i}$ is the rank of the $i$-th observation of $X$, and $r_{Y_i}$ is t
 
 -   This method is robust to non-normality and outliers since it relies on the order (ranks) rather than the actual values.
 
+
+
+
+
+
 ```{r}
 #| include: false
 source('setup.R')
-
-# Load the dataset
-delitos_data <- st_read("data/spatial/crime_spatial_course.gpkg")
-delitos_data <- delitos_data[delitos_data$dpto_ccdgo == '11', ]
 ```
 
 ```{r}
@@ -113,6 +114,11 @@ delitos_data %>%
   corrplot(., method = "color", title = "Spearman Correlation", mar=c(0,0,1,0))
 ```
 
+
+
+
+
+
 Both Spearman's $\rho$ captures the \emph{monotonic} relationship between two variables. They are more robust to outliers and non-linear relationships than Pearson's correlation. In the context of areal data (e.g., crime rates, population density across polygons), these measures can reveal how variables co-vary without assuming linearity or normality.
 
 # Spatial Neighborhood Matrices {.unnumbered}
@@ -125,6 +131,11 @@ This section is based on *Spatial statistics for data science theory and practic
 -   Rook Contiguity: Two polygons are neighbors only if they share a common edge. That is, if polygons $p_i$ and $p_j$ share a boundary segment, then $A\_{ij} = 1$; merely touching at a corner does not count.
 
 [![Neighbors based on contiguity. Area of interest is represented in black and its neighbors in gray.](images/arealdata-orderk-1.png){fig-align="center"}](Neighbors%20based%20on%20contiguity.%20Area%20of%20interest%20is%20represented%20in%20black%20and%20its%20neighbors%20in%20gray.)
+
+
+
+
+
 
 ```{r}
 #| echo: true
@@ -153,6 +164,11 @@ nblagsc <- spdep::nblag_cumul(nblags)
 table(sapply(nblagsc, length))
 ```
 
+
+
+
+
+
 ## Neighbors Based on k Nearest Neighbors
 
 -   K-Nearest Neighbors: For each polygon, the ( k ) nearest neighbors are identified based on a distance threshold.
@@ -167,6 +183,11 @@ $N_k(p_i) = p_j$ : $p_j$ is among the $k$ nearest polygons to $p_i$.
 This ensures that each polygon has exactly $k$ neighbors, which is useful when spatial units are irregular or disconnected.
 
 [![We define spatial k-nearest neighbour problem as finding k observations from a set of candidates C that are the most similar to the given a landmark L\[i\], where the similarity is defined by a distance function d(L\[i\], S\[j\]) = st_distance(L\[i\], S\[j\])](images/nearest_neighbour.png){fig-align="center"}](https://databrickslabs.github.io/mosaic/models/spatial-knn.html)
+
+
+
+
+
 
 ```{r}
 #| echo: true
@@ -197,7 +218,17 @@ plot(st_geometry(delitos_data_10), border = "lightgray", main = "First Polygons 
 plot.nb(nb_10, coords_10, add = TRUE, col = "red", lwd = 2)
 ```
 
+
+
+
+
+
 ## Neighbors Based on Distance
+
+
+
+
+
 
 ```{r}
 #| echo: true
@@ -225,7 +256,17 @@ plot(st_geometry(delitos_data_10), border = "lightgray", main = "First Polygons 
 plot.nb(nb_10, coords_10, add = TRUE, col = "red", lwd = 2)
 ```
 
+
+
+
+
+
 Determining an Appropriate Upper Distance Bound: To ensure that each area in a spatial dataset has at least (k) neighbors, we can determine an appropriate upper distance bound by first computing the (k) nearest neighbors for each area. For example, using the Queen contiguity method, one may use the \textit{spdep::knearneigh()} function with (k=1) to obtain the nearest neighbor for each polygon. This yields a matrix of neighbor IDs, which is then converted into a neighbor list (of class \textit{nb}) via \textit{knn2nb()}. Next, the \textit{spdep::nbdists()} function computes the distances along the links between each area and its neighbor. By summarizing these distances (e.g., using \textit{summary(unlist(dist1))}), we can observe the range of distances.
+
+
+
+
+
 
 ```{r}
 #| echo: true
@@ -248,7 +289,17 @@ nb <- dnearneigh(x = st_centroid(delitos_data), d1 = 0, d2 = 1.2)
 hist(sapply(nb, length))
 ```
 
+
+
+
+
+
 ## Neighborhood Matrices
+
+
+
+
+
 
 ```{r}
 #| echo: true
@@ -286,6 +337,11 @@ nbw <- nb2listw(nb, glist = ids, style = "B", zero.policy = TRUE)
 # Display the first 10 inverse-distance-based weights
 nbw$weights[1:10]
 ```
+
+
+
+
+
 
 # Spatial autocorrelation {.unnumbered}
 
@@ -341,9 +397,14 @@ Output of \textit{moran.test()}
 
 -   \textit{gmoran[["estimate"]][["Moran I statistic"]]}: The calculated value of Moran's I.
 -   \textit{gmoran[["statistic"]]}: The z-score, which measures how far the observed Moran's I is from the expected value under the null hypothesis, in standard deviations.
--   \textit{gmoran[["p.value"]]}: The p-value, which is the probability of observing a Moran's
-
+-   \textit{gmoran[["p.value"]]}: The p-value, which is the probability of observing a Moran's 
+    
 `I` value as extreme as, or more extreme than, the one calculated, assuming the null hypothesis is true. A small p-value (typically less than 0.05) suggests that you can reject the null hypothesis and conclude that there is statistically significant spatial autocorrelation.
+
+
+
+
+
 
 ```{r}
 # Compute centroids of the polygons
@@ -369,14 +430,25 @@ gmoran[["statistic"]] # z-score
 gmoran[["p.value"]] # p-value
 ```
 
--   `gmoran` The p-value (0.01282) is less than the significance level of 0.05, so we reject the null hypothesis. This means that there is statistically significant positive spatial autocorrelation in the data. In other words, the values of delitos_data\$sum_24HP show a tendency to cluster together geographically. The positive z-score (2.2318) further supports this conclusion. It indicates that the observed Moran's I is significantly higher than what would be expected by chance if the values were randomly distributed.
+
+
+
+
+
+-   `gmoran` The p-value (0.01282) is less than the significance level of 0.05, so we reject the null hypothesis. This means that there is statistically significant positive spatial autocorrelation in the data. In other words, the values of delitos_data$sum_24HP show a tendency to cluster together geographically. The positive z-score (2.2318) further supports this conclusion. It indicates that the observed Moran's I is significantly higher than what would be expected by chance if the values were randomly distributed.
 -   `gmoran[["estimate"]][["Moran I statistic"]]`The value you got, 0.004845791, is a small positive number. Here's what that means: Positive Spatial Autocorrelation: The fact that it's positive indicates there's a slight tendency for values at nearby locations to be similar. In summary, there's a very slight indication that similar values are located near each other, but the effect is not very pronounced.
--   `gmoran[["statistic"]]` The z-score of 2.2318 indicates how many standard deviations the observed Moran's I is from the expected value under the null hypothesis. A positive z-score suggests that the observed spatial pattern is more clustered than expected by chance.
+-   `gmoran[["statistic"]]` The z-score of 2.2318 indicates how many standard deviations the observed Moran's I is from the expected value under the null hypothesis. A positive z-score suggests that the observed spatial pattern is more clustered than expected by chance. 
 -   `gmoran[["p.value"]]` The p-value of 0.01282 indicates the probability of observing a Moran's I value as extreme as the one calculated, assuming the null hypothesis is true. Since this p-value is less than the common significance level of 0.05, it suggests that the observed spatial pattern is statistically significant.
 
-\textit{Moran's I Monte Carlo Simulation:} The code you provided performs a Monte Carlo simulation to assess the significance of Moran's I. Here's a breakdown:
 
-Moran's I Monte Carlo Test: The function `moran.mc` performs a Monte Carlo simulation of Moran's I. Instead of relying on the theoretical distribution of Moran's I (which can be complex), it generates a set of random spatial patterns to create an empirical distribution.
+\textit{Moran's I Monte Carlo Simulation:} The code you provided performs a Monte Carlo simulation to assess the significance of Moran's I.  Here's a breakdown:
+
+Moran's I Monte Carlo Test: The function `moran.mc` performs a Monte Carlo simulation of Moran's I.  Instead of relying on the theoretical distribution of Moran's I (which can be complex), it generates a set of random spatial patterns to create an empirical distribution.
+
+
+
+
+
 
 ```{r}
 #| echo: true
@@ -397,7 +469,17 @@ abline(v = gmoranMC$statistic, col = "red")
 moran.plot(delitos_data$sum_24HP, lw)
 ```
 
+
+
+
+
+
 ## Local Moran’s I
+
+
+
+
+
 
 ```{r}
 #| echo: true
@@ -407,6 +489,11 @@ moran.plot(delitos_data$sum_24HP, lw)
 lmoran <- localmoran(delitos_data$sum_24HP, lw, alternative = "greater")
 head(lmoran)
 ```
+
+
+
+
+
 
 Let's go through those columns again, but this time, I'll emphasize what they tell you about the pattern at each individual location:
 
@@ -430,11 +517,17 @@ Z.Ii (Z-score of Ii):
 -   Big positive or negative number (outside -1.96 to +1.96): This neighborhood has a statistically significant pattern. It's either a hot spot, a cold spot, or a spatial outlier.
 -   Number close to zero (inside -1.96 to +1.96): The pattern at this neighborhood could easily have happened by chance. It's not statistically significant.
 
-Pr(z \> E(Ii)) (P-value):
+Pr(z > E(Ii)) (P-value):
 
 -   This is another way to determine statistical significance.
 -   Small number (less than 0.05): This neighborhood has a statistically significant pattern (hot spot, cold spot, or spatial outlier).
 -   Large number (greater than 0.05): The pattern at this neighborhood could easily have happened by chance. It's not statistically significant.
+
+
+
+
+
+
 
 ```{r}
 #| eval: false
@@ -470,25 +563,30 @@ p4 <- tm_shape(delitos_data) +
 tmap_arrange(p1, p2, p3, p4)
 ```
 
+
+
+
+
+
 p1: sum_24HP (Your Variable)
 
-This map shows the distribution of your variable of interest (sum_24HP). The style = "quantile" argument means the colors represent quantiles, so each color shows roughly an equal number of polygons. This map gives you a baseline for seeing how your variable is distributed spatially.
+This map shows the distribution of your variable of interest (sum_24HP).  The style = "quantile" argument means the colors represent quantiles, so each color shows roughly an equal number of polygons.  This map gives you a baseline for seeing how your variable is distributed spatially.
 
 p2: lmI (Local Moran's I)
 
 This map displays the Local Moran's I values.
 
-Positive values (often shown in warmer colors) indicate that a polygon has neighbors with similar values. This suggests spatial clusters of high values or low values.
+Positive values (often shown in warmer colors) indicate that a polygon has neighbors with similar values.  This suggests spatial clusters of high values or low values.
 
-Negative values (often shown in cooler colors) indicate that a polygon has neighbors with dissimilar values. This suggests spatial outliers.
+Negative values (often shown in cooler colors) indicate that a polygon has neighbors with dissimilar values.  This suggests spatial outliers.
 
 Again, style = "quantile" is used, so the colors represent the distribution of Local Moran's I values.
 
 p3: lmZ (Z-scores)
 
-This map shows the z-scores associated with the Local Moran's I values. Z-scores help you assess the statistical significance of the local clustering.
+This map shows the z-scores associated with the Local Moran's I values.  Z-scores help you assess the statistical significance of the local clustering.
 
-You've set breaks = c(-Inf, 1.65, Inf). Assuming this is a one-tailed test:
+You've set breaks = c(-Inf, 1.65, Inf).  Assuming this is a one-tailed test:
 
 Values greater than 1.65 indicate statistically significant (at approximately the 0.05 level) clustering of high values (a "hot spot").
 
@@ -498,13 +596,19 @@ Values between -1.65 and 1.65 suggest the spatial pattern is not statistically s
 
 p4: lmp (P-values)
 
-This map displays the p-values associated with the Local Moran's I values. P-values provide another way to assess statistical significance.
+This map displays the p-values associated with the Local Moran's I values.  P-values provide another way to assess statistical significance.
 
 You've set breaks = c(-Inf, 0.05, Inf).
 
 Polygons with p-values less than 0.05 (shown in one color) indicate statistically significant spatial clustering.
 
 Polygons with p-values greater than 0.05 (shown in the other color) do not show statistically significant clustering.
+
+
+
+
+
+
 
 ```{r}
 #| echo: true
@@ -524,7 +628,17 @@ tm_shape(delitos_data) +
     tm_layout(legend.outside = TRUE)
 ```
 
+
+
+
+
+
 ## Clusters
+
+
+
+
+
 
 ```{r}
 #| echo: true
@@ -560,7 +674,17 @@ tm_layout(frame = FALSE,  title = "Clusters")  +
 tm_layout(legend.outside = TRUE)
 ```
 
+
+
+
+
+
 # Correspondance Analysis {.unnumbered}
+
+
+
+
+
 
 ```{r}
 #| eval: false
@@ -667,3 +791,4 @@ dist_ji <- as.matrix((F_rel - F_exp) %*% D_c_inv %*% t(F_rel - F_exp))
 print("Matriz de distancias ji-cuadrado entre filas:")
 print(dist_ji)
 ```
+
